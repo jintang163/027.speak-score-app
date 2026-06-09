@@ -10,6 +10,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Repository
@@ -24,6 +25,12 @@ public interface MaterialRepository extends JpaRepository<Material, Long> {
     Page<Material> findBySchoolIdAndReviewStatusAndDeletedFalse(Long schoolId, ReviewStatus status, Pageable pageable);
 
     Page<Material> findByTitleContainingAndReviewStatusAndDeletedFalse(String keyword, ReviewStatus status, Pageable pageable);
+
+    Page<Material> findByReviewStatusAndDeletedFalse(ReviewStatus status, Pageable pageable);
+
+    List<Material> findByVideoIdAndDeletedFalse(String videoId);
+
+    long countByCreatedAtBetweenAndDeletedFalse(LocalDateTime start, LocalDateTime end);
 
     @Query("SELECT m FROM Material m JOIN m.tags t WHERE t.id = :tagId AND m.reviewStatus = :status AND m.deleted = false")
     Page<Material> findByTagIdAndReviewStatus(@Param("tagId") Long tagId, @Param("status") ReviewStatus status, Pageable pageable);

@@ -6,6 +6,7 @@ import com.speak.score.dto.MaterialUpdateRequest;
 import com.speak.score.dto.MaterialUploadRequest;
 import com.speak.score.dto.ReviewActionRequest;
 import com.speak.score.dto.TagDTO;
+import com.speak.score.dto.VodUploadAuthDTO;
 import com.speak.score.entity.Material;
 import com.speak.score.entity.MaterialTag;
 import com.speak.score.entity.MaterialType;
@@ -69,8 +70,9 @@ public class MaterialService {
         TranscodeStatus transcodeStatus = TranscodeStatus.NONE;
 
         if (materialType == MaterialType.VIDEO) {
-            videoId = vodService.uploadVideo(file);
-            vodService.triggerTranscode(videoId);
+            VodUploadAuthDTO uploadAuth = vodService.createUploadVideo(
+                    request.getTitle(), file.getOriginalFilename());
+            videoId = uploadAuth.getVideoId();
             transcodeStatus = TranscodeStatus.PENDING;
         }
 
@@ -103,8 +105,21 @@ public class MaterialService {
         }
 
         Material savedMaterial = materialRepository.save(material);
-        log.info("Material uploaded: id={}, type={}, uploaderId={}", savedMaterial.getId(), materialType, userId);
+        log.info("Material uploaded: id={}, type={}, uploaderId={}, videoId={}",
+                savedMaterial.getId(), materialType, userId, videoId);
         return MaterialDTO.fromEntity(savedMaterial);
+    }
+
+    public VodUploadAuthDTO getVideoUploadAuth(Long materialId) {
+        Material material = materialRepository.findById(materialId)
+                .orElseThrow(() -> new BusinessException("Material not found"));
+        if (material.getMaterialType() != MaterialType.VIDEO) {
+            throw new BusinessException("Material is not a video type");
+        }
+        if (material.getVideoId() == null || material.getVideoId().isEmpty()) {
+            throw new BusinessException("Video has not been registered with VOD");
+        }
+        return vodService.refreshUploadVideo(material.getVideoId());
     }
 
     @Transactional

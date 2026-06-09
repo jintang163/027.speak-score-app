@@ -49,6 +49,8 @@ public class HomeController {
                 menus.add(new HomeMenuDTO.MenuItem("record", "我的录音", "mic", "/student/record"));
                 menus.add(new HomeMenuDTO.MenuItem("ranking", "排行榜", "trophy", "/student/ranking"));
                 menus.add(new HomeMenuDTO.MenuItem("resource", "学习资料", "video", "/student/resource"));
+                menus.add(new HomeMenuDTO.MenuItem("todo", "我的待办", "assignment_turned_in", "/student/todo"));
+                menus.add(new HomeMenuDTO.MenuItem("notification", "消息通知", "notifications", "/student/notification"));
                 menus.add(new HomeMenuDTO.MenuItem("profile", "我的", "person", "/student/profile"));
                 break;
             case TEACHER:
@@ -56,8 +58,8 @@ public class HomeController {
                 menus.add(new HomeMenuDTO.MenuItem("students", "学生管理", "people", "/teacher/students"));
                 menus.add(new HomeMenuDTO.MenuItem("material", "资料管理", "video_library", "/teacher/material"));
                 menus.add(new HomeMenuDTO.MenuItem("ranking", "成绩排行", "trophy", "/teacher/ranking"));
-                menus.add(new HomeMenuDTO.MenuItem("resource", "资料管理", "video", "/teacher/resource"));
-                menus.add(new HomeMenuDTO.MenuItem("message", "消息通知", "notifications", "/teacher/message"));
+                menus.add(new HomeMenuDTO.MenuItem("todo", "待办管理", "assignment_turned_in", "/teacher/todo"));
+                menus.add(new HomeMenuDTO.MenuItem("notification", "消息通知", "notifications", "/teacher/notification"));
                 menus.add(new HomeMenuDTO.MenuItem("profile", "我的", "person", "/teacher/profile"));
                 break;
             case EDU_OFFICE:
@@ -65,8 +67,9 @@ public class HomeController {
                 menus.add(new HomeMenuDTO.MenuItem("material", "资料审核", "video_library", "/edu-office/material"));
                 menus.add(new HomeMenuDTO.MenuItem("teachers", "教师管理", "people", "/edu-office/teachers"));
                 menus.add(new HomeMenuDTO.MenuItem("classes", "班级管理", "grid", "/edu-office/classes"));
+                menus.add(new HomeMenuDTO.MenuItem("todo", "待办管理", "assignment_turned_in", "/edu-office/todo"));
+                menus.add(new HomeMenuDTO.MenuItem("notification", "消息推送", "notifications", "/edu-office/notification"));
                 menus.add(new HomeMenuDTO.MenuItem("ranking", "全校排行", "trophy", "/edu-office/ranking"));
-                menus.add(new HomeMenuDTO.MenuItem("message", "消息推送", "notifications", "/edu-office/message"));
                 menus.add(new HomeMenuDTO.MenuItem("profile", "我的", "person", "/edu-office/profile"));
                 break;
         }

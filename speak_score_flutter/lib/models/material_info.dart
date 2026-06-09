@@ -27,6 +27,7 @@ class MaterialInfo {
   final String? coverUrl;
   final int? duration;
   final String? hlsUrl;
+  final String? videoId;
   final String? transcodeStatus;
   final String? reviewStatus;
   final String? reviewComment;
@@ -55,6 +56,7 @@ class MaterialInfo {
     this.coverUrl,
     this.duration,
     this.hlsUrl,
+    this.videoId,
     this.transcodeStatus,
     this.reviewStatus,
     this.reviewComment,
@@ -85,6 +87,7 @@ class MaterialInfo {
       coverUrl: json['coverUrl'] as String?,
       duration: json['duration'] as int?,
       hlsUrl: json['hlsUrl'] as String?,
+      videoId: json['videoId'] as String?,
       transcodeStatus: json['transcodeStatus'] as String?,
       reviewStatus: json['reviewStatus'] as String?,
       reviewComment: json['reviewComment'] as String?,
@@ -117,6 +120,7 @@ class MaterialInfo {
         'coverUrl': coverUrl,
         'duration': duration,
         'hlsUrl': hlsUrl,
+        'videoId': videoId,
         'transcodeStatus': transcodeStatus,
         'reviewStatus': reviewStatus,
         'reviewComment': reviewComment,

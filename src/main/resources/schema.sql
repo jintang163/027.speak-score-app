@@ -248,6 +248,87 @@ INSERT INTO mat_tag (tag_name, tag_type) VALUES
     ('语法讲解', 'SYSTEM'),
     ('词汇学习', 'SYSTEM');
 
+CREATE TABLE todo_task (
+    id              BIGINT AUTO_INCREMENT PRIMARY KEY,
+    title           VARCHAR(200) NOT NULL,
+    description     VARCHAR(1000),
+    task_type       VARCHAR(30)  NOT NULL DEFAULT 'GENERAL' COMMENT 'GENERAL,READING,PRACTICE,REVIEW',
+    priority        VARCHAR(10)  NOT NULL DEFAULT 'NORMAL' COMMENT 'LOW,NORMAL,HIGH,URGENT',
+    status          VARCHAR(20)  NOT NULL DEFAULT 'PENDING' COMMENT 'PENDING,IN_PROGRESS,COMPLETED,CANCELLED',
+    creator_id      BIGINT       NOT NULL,
+    assignee_id     BIGINT,
+    assignee_type   VARCHAR(20)  DEFAULT 'USER' COMMENT 'USER,CLASS,SCHOOL',
+    assignee_class_id BIGINT,
+    assignee_school_id BIGINT,
+    deadline        DATETIME     NOT NULL,
+    completed_at    DATETIME,
+    urge_count      INT          NOT NULL DEFAULT 0,
+    last_urge_at    DATETIME,
+    remind_before_min INT        NOT NULL DEFAULT 30 COMMENT 'remind N minutes before deadline',
+    remind_sent     BIT(1)       NOT NULL DEFAULT 0,
+    parent_task_id  BIGINT,
+    created_at      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    deleted         BIT(1)       NOT NULL DEFAULT 0,
+    INDEX idx_creator (creator_id),
+    INDEX idx_assignee (assignee_id),
+    INDEX idx_status (status),
+    INDEX idx_deadline (deadline),
+    CONSTRAINT fk_todo_creator FOREIGN KEY (creator_id) REFERENCES sys_user(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE todo_item (
+    id              BIGINT AUTO_INCREMENT PRIMARY KEY,
+    task_id         BIGINT       NOT NULL,
+    user_id         BIGINT       NOT NULL,
+    status          VARCHAR(20)  NOT NULL DEFAULT 'PENDING' COMMENT 'PENDING,COMPLETED,REJECTED',
+    feedback        VARCHAR(500),
+    completed_at    DATETIME,
+    created_at      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    deleted         BIT(1)       NOT NULL DEFAULT 0,
+    UNIQUE KEY uk_task_user (task_id, user_id),
+    INDEX idx_task (task_id),
+    INDEX idx_user (user_id),
+    CONSTRAINT fk_ti_task FOREIGN KEY (task_id) REFERENCES todo_task(id),
+    CONSTRAINT fk_ti_user FOREIGN KEY (user_id) REFERENCES sys_user(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE notify_message (
+    id              BIGINT AUTO_INCREMENT PRIMARY KEY,
+    title           VARCHAR(200) NOT NULL,
+    content         VARCHAR(2000) NOT NULL,
+    msg_type        VARCHAR(20)  NOT NULL DEFAULT 'TODO' COMMENT 'TODO,SYSTEM,REMINDER,URGE',
+    channel         VARCHAR(20)  NOT NULL DEFAULT 'IN_APP' COMMENT 'IN_APP,EMAIL,DINGTALK,WECHAT',
+    sender_id       BIGINT,
+    receiver_id     BIGINT       NOT NULL,
+    related_id      BIGINT COMMENT 'related task/material id',
+    related_type    VARCHAR(20) COMMENT 'TODO,MATERIAL,CLASS',
+    is_read         BIT(1)       NOT NULL DEFAULT 0,
+    read_at         DATETIME,
+    created_at      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    deleted         BIT(1)       NOT NULL DEFAULT 0,
+    INDEX idx_receiver (receiver_id),
+    INDEX idx_read (is_read),
+    INDEX idx_type (msg_type),
+    CONSTRAINT fk_notify_sender FOREIGN KEY (sender_id) REFERENCES sys_user(id),
+    CONSTRAINT fk_notify_receiver FOREIGN KEY (receiver_id) REFERENCES sys_user(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE notify_channel_config (
+    id              BIGINT AUTO_INCREMENT PRIMARY KEY,
+    user_id         BIGINT       NOT NULL,
+    channel         VARCHAR(20)  NOT NULL COMMENT 'IN_APP,EMAIL,DINGTALK,WECHAT',
+    channel_value   VARCHAR(300) NOT NULL COMMENT 'email address / dingtalk id / wechat openid',
+    enabled         BIT(1)       NOT NULL DEFAULT 1,
+    created_at      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    deleted         BIT(1)       NOT NULL DEFAULT 0,
+    UNIQUE KEY uk_user_channel (user_id, channel),
+    CONSTRAINT fk_ncc_user FOREIGN KEY (user_id) REFERENCES sys_user(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 INSERT INTO sys_role (role_code, role_name, description) VALUES
     ('STUDENT', '学生', '学生角色，可跟读打卡、查看成绩和排行'),
     ('TEACHER', '老师', '老师角色，可下发任务、管理本班学生、查看班级成绩'),

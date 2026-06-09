@@ -85,6 +85,26 @@ content-review:
   access-key-secret: ${CONTENT_REVIEW_ACCESS_KEY_SECRET:}
   endpoint: ${CONTENT_REVIEW_ENDPOINT:}
 
+notification:
+  email:
+    enabled: ${NOTIFY_EMAIL_ENABLED:false}
+    host: ${NOTIFY_EMAIL_HOST:smtp.example.com}
+    port: ${NOTIFY_EMAIL_PORT:465}
+    username: ${NOTIFY_EMAIL_USERNAME:}
+    password: ${NOTIFY_EMAIL_PASSWORD:}
+    from: ${NOTIFY_EMAIL_FROM:noreply@example.com}
+    ssl: true
+  dingtalk:
+    enabled: ${NOTIFY_DINGTALK_ENABLED:false}
+    webhook: ${NOTIFY_DINGTALK_WEBHOOK:}
+    secret: ${NOTIFY_DINGTALK_SECRET:}
+  wechat:
+    enabled: ${NOTIFY_WECHAT_ENABLED:false}
+    template-id: ${NOTIFY_WECHAT_TEMPLATE_ID:}
+  reminder:
+    cron: ${NOTIFY_REMINDER_CRON:0 */5 * * * *}
+    advance-minutes: ${NOTIFY_ADVANCE_MINUTES:30}
+
 logging:
   level:
     com.speak.score: DEBUG

@@ -8,6 +8,7 @@ import com.speak.score.dto.MaterialUploadRequest;
 import com.speak.score.dto.ReviewActionRequest;
 import com.speak.score.dto.TagCreateRequest;
 import com.speak.score.dto.TagDTO;
+import com.speak.score.dto.VodUploadAuthDTO;
 import com.speak.score.service.MaterialService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -100,5 +101,11 @@ public class MaterialController {
     @GetMapping("/{id}/play-url")
     public ApiResponse<String> getVideoPlayUrl(@PathVariable("id") Long materialId, Authentication auth) {
         return ApiResponse.success(materialService.getVideoPlayUrl(materialId));
+    }
+
+    @GetMapping("/{id}/upload-auth")
+    @PreAuthorize("hasAnyRole('TEACHER', 'EDU_OFFICE')")
+    public ApiResponse<VodUploadAuthDTO> getVideoUploadAuth(@PathVariable("id") Long materialId, Authentication auth) {
+        return ApiResponse.success(materialService.getVideoUploadAuth(materialId));
     }
 }

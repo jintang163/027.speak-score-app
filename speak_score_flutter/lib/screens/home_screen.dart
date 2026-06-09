@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:speak_score_flutter/services/auth_service.dart';
 import 'package:speak_score_flutter/services/home_service.dart';
+import 'package:speak_score_flutter/services/todo_service.dart';
 import 'package:speak_score_flutter/models/user_info.dart';
 import 'package:speak_score_flutter/screens/student/student_task_screen.dart';
 import 'package:speak_score_flutter/screens/student/student_record_screen.dart';
@@ -15,6 +16,8 @@ import 'package:speak_score_flutter/screens/edu_office/edu_office_school_screen.
 import 'package:speak_score_flutter/screens/edu_office/edu_office_ranking_screen.dart';
 import 'package:speak_score_flutter/screens/edu_office/edu_office_profile_screen.dart';
 import 'package:speak_score_flutter/screens/material/material_list_screen.dart';
+import 'package:speak_score_flutter/screens/notification/notification_list_screen.dart';
+import 'package:speak_score_flutter/screens/todo/todo_list_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -27,6 +30,8 @@ class _HomeScreenState extends State<HomeScreen> {
   int _currentIndex = 0;
   HomeMenu? _homeMenu;
   bool _isLoadingMenu = true;
+  int _unreadCount = 0;
+  final TodoService _todoService = TodoService();
 
   String get _primaryRole {
     final roles = context.read<AuthService>().userInfo?.roles;
@@ -182,6 +187,14 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     _loadMenus();
+    _loadUnreadCount();
+  }
+
+  Future<void> _loadUnreadCount() async {
+    final count = await _todoService.getUnreadCount();
+    if (mounted) {
+      setState(() => _unreadCount = count);
+    }
   }
 
   Future<void> _loadMenus() async {
@@ -263,6 +276,39 @@ class _HomeScreenState extends State<HomeScreen> {
             onPressed: () => Scaffold.of(ctx).openDrawer(),
           ),
         ),
+        actions: [
+          Stack(
+            children: [
+              IconButton(
+                icon: const Icon(Icons.notifications),
+                onPressed: () async {
+                  await Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const NotificationListScreen()),
+                  );
+                  _loadUnreadCount();
+                },
+              ),
+              if (_unreadCount > 0)
+                Positioned(
+                  right: 4,
+                  top: 4,
+                  child: Container(
+                    padding: const EdgeInsets.all(2),
+                    decoration: BoxDecoration(
+                      color: Colors.red,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
+                    child: Text(
+                      _unreadCount > 99 ? '99+' : '$_unreadCount',
+                      style: const TextStyle(color: Colors.white, fontSize: 10),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ],
       ),
       drawer: _buildDrawer(userInfo),
       body: IndexedStack(
@@ -318,6 +364,48 @@ class _HomeScreenState extends State<HomeScreen> {
               enabled: false,
             ),
           const Divider(),
+          ListTile(
+            leading: const Icon(Icons.assignment_turned_in),
+            title: const Text('我的待办'),
+            trailing: _unreadCount > 0
+                ? Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: Colors.red,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Text('$_unreadCount',
+                        style: const TextStyle(color: Colors.white, fontSize: 11)),
+                  )
+                : null,
+            onTap: () {
+              Navigator.of(context).pop();
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const TodoListScreen()),
+              ).then((_) => _loadUnreadCount());
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.notifications),
+            title: const Text('消息通知'),
+            trailing: _unreadCount > 0
+                ? Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: Colors.red,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Text('$_unreadCount',
+                        style: const TextStyle(color: Colors.white, fontSize: 11)),
+                  )
+                : null,
+            onTap: () {
+              Navigator.of(context).pop();
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const NotificationListScreen()),
+              ).then((_) => _loadUnreadCount());
+            },
+          ),
           ListTile(
             leading: const Icon(Icons.settings),
             title: const Text('设置'),

@@ -52,7 +52,8 @@ public class RbacService {
                 "task:view", "task:submit", "recording:create", "recording:view_own",
                 "score:view_own", "ranking:view_class", "ranking:view_school",
                 "profile:view", "profile:update", "class:join",
-                "material:view", "material:search", "material:preview"
+                "material:view", "material:search", "material:preview",
+                "todo:view_own", "todo:complete", "notification:view", "notification:manage_own"
         };
         assignPermissionsToRole(studentRole, permissions);
     }
@@ -69,7 +70,8 @@ public class RbacService {
                 "profile:view", "profile:update",
                 "material:upload", "material:view", "material:search", "material:preview",
                 "material:manage_own", "material:tag_create",
-                "video:upload", "video:manage", "message:send"
+                "video:upload", "video:manage", "message:send",
+                "todo:create", "todo:manage", "todo:urge", "notification:send", "notification:manage_all"
         };
         assignPermissionsToRole(teacherRole, permissions);
     }
@@ -91,7 +93,8 @@ public class RbacService {
                 "material:manage_all", "material:review", "material:tag_create",
                 "video:upload", "video:manage", "video:approve",
                 "message:send", "message:manage",
-                "permission:manage"
+                "permission:manage",
+                "todo:create", "todo:manage_all", "notification:send", "notification:manage_all"
         };
         assignPermissionsToRole(eduOfficeRole, permissions);
     }

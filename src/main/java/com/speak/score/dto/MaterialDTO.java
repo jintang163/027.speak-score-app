@@ -26,6 +26,7 @@ public class MaterialDTO {
     private String coverUrl;
     private Integer duration;
     private String hlsUrl;
+    private String videoId;
     private String transcodeStatus;
     private String reviewStatus;
     private String reviewComment;
@@ -60,6 +61,7 @@ public class MaterialDTO {
         dto.setCoverUrl(m.getCoverUrl());
         dto.setDuration(m.getDuration());
         dto.setHlsUrl(m.getHlsUrl());
+        dto.setVideoId(m.getVideoId());
         dto.setTranscodeStatus(m.getTranscodeStatus() != null ? m.getTranscodeStatus().name() : null);
         dto.setReviewStatus(m.getReviewStatus() != null ? m.getReviewStatus().name() : null);
         dto.setReviewComment(m.getReviewComment());

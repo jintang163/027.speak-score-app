@@ -46,7 +46,9 @@ public class SecurityConfig {
                             "/auth/refresh",
                             "/auth/sms-code",
                             "/auth/register",
-                            "/public/**"
+                            "/public/**",
+                            "/vod/callback/**",
+                            "/web-admin/**"
                     ).permitAll()
                     .antMatchers("/edu-office/**").hasRole("EDU_OFFICE")
                     .antMatchers("/teacher/**").hasAnyRole("TEACHER", "EDU_OFFICE")

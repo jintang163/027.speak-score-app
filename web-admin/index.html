@@ -1,0 +1,1446 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>口语评分系统 - 教育局管理后台</title>
+  <link rel="stylesheet" href="https://unpkg.com/element-plus/dist/index.css" />
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body, #app { height: 100%; font-family: 'Helvetica Neue', Helvetica, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', Arial, sans-serif; }
+
+    .login-container {
+      display: flex; justify-content: center; align-items: center;
+      height: 100vh; background: linear-gradient(135deg, #1a3a6b 0%, #2d6cb4 100%);
+    }
+    .login-card {
+      width: 400px; padding: 40px; background: #fff; border-radius: 12px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.15);
+    }
+    .login-card h2 { text-align: center; margin-bottom: 8px; color: #1a3a6b; font-size: 24px; }
+    .login-card .subtitle { text-align: center; margin-bottom: 32px; color: #909399; font-size: 14px; }
+
+    .admin-layout { display: flex; height: 100vh; }
+    .admin-sidebar {
+      width: 220px; background: #1a3a6b; color: #fff; flex-shrink: 0;
+      display: flex; flex-direction: column;
+    }
+    .sidebar-logo {
+      height: 60px; display: flex; align-items: center; justify-content: center;
+      font-size: 16px; font-weight: 600; border-bottom: 1px solid rgba(255,255,255,0.1);
+      padding: 0 16px;
+    }
+    .sidebar-logo span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .admin-sidebar .el-menu { border-right: none; }
+
+    .admin-main { flex: 1; display: flex; flex-direction: column; overflow: hidden; background: #f0f2f5; }
+    .admin-header {
+      height: 60px; background: #fff; display: flex; align-items: center;
+      justify-content: space-between; padding: 0 24px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.08); z-index: 10;
+    }
+    .admin-header .header-left { font-size: 16px; font-weight: 500; color: #303133; }
+    .admin-header .header-right { display: flex; align-items: center; gap: 16px; }
+    .admin-header .user-info { font-size: 14px; color: #606266; }
+    .admin-content { flex: 1; padding: 24px; overflow-y: auto; }
+
+    .stat-cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
+    .stat-card {
+      background: #fff; border-radius: 8px; padding: 20px 24px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+    }
+    .stat-card .stat-label { font-size: 14px; color: #909399; margin-bottom: 8px; }
+    .stat-card .stat-value { font-size: 28px; font-weight: 600; color: #303133; }
+    .stat-card .stat-icon { float: right; font-size: 32px; opacity: 0.6; }
+    .stat-card.card-users .stat-icon { color: #409EFF; }
+    .stat-card.card-schools .stat-icon { color: #67C23A; }
+    .stat-card.card-classes .stat-icon { color: #E6A23C; }
+    .stat-card.card-materials .stat-icon { color: #F56C6C; }
+    .stat-card.card-todos .stat-icon { color: #9B59B6; }
+    .stat-card.card-notifications .stat-icon { color: #E74C3C; }
+
+    .chart-row { display: grid; grid-template-columns: 3fr 2fr; gap: 16px; margin-bottom: 24px; }
+    .chart-card {
+      background: #fff; border-radius: 8px; padding: 20px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+    }
+    .chart-card h3 { font-size: 16px; color: #303133; margin-bottom: 16px; font-weight: 500; }
+    .chart-container { height: 320px; }
+
+    .review-table-wrap { background: #fff; border-radius: 8px; padding: 20px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
+
+    .page-card {
+      background: #fff; border-radius: 8px; padding: 24px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.06); min-height: 400px;
+    }
+    .page-card h3 { font-size: 18px; color: #303133; margin-bottom: 20px; font-weight: 600; }
+    .search-bar { margin-bottom: 16px; display: flex; gap: 12px; align-items: center; }
+
+    .pending-badge { margin-left: 6px; }
+
+    @media (max-width: 1200px) {
+      .stat-cards { grid-template-columns: repeat(2, 1fr); }
+      .chart-row { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+<div id="app">
+  <router-view></router-view>
+</div>
+
+<script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+<script src="https://unpkg.com/vue-router@4/dist/vue-router.global.prod.js"></script>
+<script src="https://unpkg.com/element-plus/dist/index.full.min.js"></script>
+<script src="https://unpkg.com/element-plus/dist/locale/zh-cn.min.js"></script>
+<script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
+
+<script>
+const { createApp, ref, reactive, computed, onMounted, watch, nextTick, onUnmounted } = Vue;
+const { createRouter, createWebHashHistory } = VueRouter;
+const { ElMessage, ElMessageBox } = ElementPlus;
+
+const API_BASE = '/api';
+
+const http = axios.create({ baseURL: API_BASE, timeout: 15000 });
+http.interceptors.request.use(config => {
+  const token = localStorage.getItem('access_token');
+  if (token) config.headers.Authorization = 'Bearer ' + token;
+  return config;
+});
+http.interceptors.response.use(
+  res => {
+    if (res.data.code !== 200) {
+      ElMessage.error(res.data.message || '请求失败');
+      return Promise.reject(new Error(res.data.message));
+    }
+    return res.data;
+  },
+  err => {
+    if (err.response && err.response.status === 401) {
+      localStorage.removeItem('access_token');
+      localStorage.removeItem('user_info');
+      router.push('/login');
+      ElMessage.error('登录已过期，请重新登录');
+    } else if (err.response && err.response.data && err.response.data.message) {
+      ElMessage.error(err.response.data.message);
+    } else {
+      ElMessage.error('网络错误，请稍后重试');
+    }
+    return Promise.reject(err);
+  }
+);
+
+function handleApi(promise, fallback) {
+  return promise.then(d => d.data).catch(() => fallback);
+}
+
+const LoginPage = {
+  template: `
+    <div class="login-container">
+      <div class="login-card">
+        <h2>口语评分系统</h2>
+        <p class="subtitle">教育局管理后台</p>
+        <el-form :model="form" @submit.prevent="handleLogin" label-position="top">
+          <el-form-item label="手机号">
+            <el-input v-model="form.phone" placeholder="请输入手机号" maxlength="11"
+              prefix-icon="Phone" size="large" clearable></el-input>
+          </el-form-item>
+          <el-form-item label="验证码">
+            <div style="display:flex;gap:8px;width:100%">
+              <el-input v-model="form.code" placeholder="请输入验证码" maxlength="6"
+                prefix-icon="Lock" size="large" style="flex:1"></el-input>
+              <el-button size="large" :disabled="countdown > 0" @click="sendCode"
+                style="width:120px">
+                {{ countdown > 0 ? countdown + 's' : '获取验证码' }}
+              </el-button>
+            </div>
+          </el-form-item>
+          <el-form-item>
+            <el-button type="primary" size="large" style="width:100%" :loading="loading"
+              native-type="submit">登 录</el-button>
+          </el-form-item>
+        </el-form>
+      </div>
+    </div>
+  `,
+  setup() {
+    const form = reactive({ phone: '', code: '' });
+    const loading = ref(false);
+    const countdown = ref(0);
+    let timer = null;
+
+    function sendCode() {
+      if (!form.phone || form.phone.length !== 11) {
+        ElMessage.warning('请输入正确的手机号');
+        return;
+      }
+      http.post('/auth/sms-code', { phone: form.phone }).then(() => {
+        ElMessage.success('验证码已发送');
+        countdown.value = 60;
+        timer = setInterval(() => {
+          countdown.value--;
+          if (countdown.value <= 0) clearInterval(timer);
+        }, 1000);
+      });
+    }
+
+    function handleLogin() {
+      if (!form.phone || form.phone.length !== 11) {
+        ElMessage.warning('请输入正确的手机号'); return;
+      }
+      if (!form.code) {
+        ElMessage.warning('请输入验证码'); return;
+      }
+      loading.value = true;
+      http.post('/auth/phone-login', { phone: form.phone, code: form.code })
+        .then(res => {
+          const data = res.data;
+          localStorage.setItem('access_token', data.accessToken);
+          localStorage.setItem('refresh_token', data.refreshToken);
+          if (data.userInfo) {
+            localStorage.setItem('user_info', JSON.stringify(data.userInfo));
+          }
+          ElMessage.success('登录成功');
+          router.push('/');
+        })
+        .finally(() => { loading.value = false; });
+    }
+
+    onUnmounted(() => { if (timer) clearInterval(timer); });
+
+    return { form, loading, countdown, sendCode, handleLogin };
+  }
+};
+
+const AdminLayout = {
+  template: `
+    <div class="admin-layout">
+      <div class="admin-sidebar">
+        <div class="sidebar-logo"><span>教育局管理后台</span></div>
+        <el-menu :default-active="activeMenu" background-color="#1a3a6b" text-color="#bfdbfe"
+          active-text-color="#ffffff" router>
+          <el-menu-item index="/">
+            <el-icon><i class="el-icon-data-analysis"></i></el-icon>
+            <span>数据概览</span>
+          </el-menu-item>
+          <el-menu-item index="/materials">
+            <el-icon><i class="el-icon-document-checked"></i></el-icon>
+            <span>资料审核<el-badge v-if="pendingCount > 0" :value="pendingCount" class="pending-badge" /></span>
+          </el-menu-item>
+          <el-menu-item index="/users">
+            <el-icon><i class="el-icon-user"></i></el-icon>
+            <span>用户管理</span>
+          </el-menu-item>
+          <el-menu-item index="/schools">
+            <el-icon><i class="el-icon-office-building"></i></el-icon>
+            <span>学校管理</span>
+          </el-menu-item>
+          <el-menu-item index="/classes">
+            <el-icon><i class="el-icon-school"></i></el-icon>
+            <span>班级管理</span>
+          </el-menu-item>
+          <el-menu-item index="/todos">
+            <el-icon><i class="el-icon-bell"></i></el-icon>
+            <span>待办管理</span>
+          </el-menu-item>
+          <el-menu-item index="/notifications">
+            <el-icon><i class="el-icon-chat-dot-round"></i></el-icon>
+            <span>消息通知<el-badge v-if="unreadCount > 0" :value="unreadCount" class="pending-badge" /></span>
+          </el-menu-item>
+        </el-menu>
+      </div>
+      <div class="admin-main">
+        <div class="admin-header">
+          <div class="header-left">{{ pageTitle }}</div>
+          <div class="header-right">
+            <el-badge v-if="unreadCount > 0" :value="unreadCount" :max="99" style="margin-right:8px">
+              <el-button text @click="router.push('/notifications')">
+                <el-icon style="font-size:18px"><i class="el-icon-chat-dot-round"></i></el-icon>
+              </el-button>
+            </el-badge>
+            <span class="user-info">{{ currentUser }}</span>
+            <el-button type="danger" text @click="handleLogout">退出登录</el-button>
+          </div>
+        </div>
+        <div class="admin-content">
+          <router-view></router-view>
+        </div>
+      </div>
+    </div>
+  `,
+  setup() {
+    const route = VueRouter.useRoute();
+    const activeMenu = computed(() => route.path);
+    const pendingCount = ref(0);
+    const unreadCount = ref(0);
+
+    const pageTitles = {
+      '/': '数据概览',
+      '/materials': '资料审核',
+      '/users': '用户管理',
+      '/schools': '学校管理',
+      '/classes': '班级管理',
+      '/todos': '待办管理',
+      '/notifications': '消息通知'
+    };
+    const pageTitle = computed(() => pageTitles[route.path] || '管理后台');
+
+    const currentUser = computed(() => {
+      try {
+        const info = JSON.parse(localStorage.getItem('user_info') || '{}');
+        return info.realName || info.nickname || info.phone || '管理员';
+      } catch { return '管理员'; }
+    });
+
+    function handleLogout() {
+      ElMessageBox.confirm('确定要退出登录吗？', '提示', {
+        confirmButtonText: '确定', cancelButtonText: '取消', type: 'warning'
+      }).then(() => {
+        const token = localStorage.getItem('access_token');
+        if (token) {
+          http.post('/auth/logout').catch(() => {});
+        }
+        localStorage.removeItem('access_token');
+        localStorage.removeItem('refresh_token');
+        localStorage.removeItem('user_info');
+        router.push('/login');
+      }).catch(() => {});
+    }
+
+    function fetchPendingCount() {
+      http.get('/dashboard/stats').then(res => {
+        if (res.data) pendingCount.value = res.data.pendingReviewCount || 0;
+      }).catch(() => {});
+    }
+
+    function fetchUnreadCount() {
+      http.get('/notifications/unread-count').then(res => {
+        unreadCount.value = res.data || 0;
+      }).catch(() => {});
+    }
+
+    onMounted(() => {
+      fetchPendingCount();
+      fetchUnreadCount();
+    });
+
+    return { activeMenu, pageTitle, currentUser, pendingCount, unreadCount, handleLogout };
+  }
+};
+
+const DashboardView = {
+  template: `
+    <div>
+      <div class="stat-cards">
+        <div class="stat-card card-users">
+          <div class="stat-icon">&#128101;</div>
+          <div class="stat-label">总用户</div>
+          <div class="stat-value">{{ stats.totalUsers || 0 }}</div>
+        </div>
+        <div class="stat-card card-schools">
+          <div class="stat-icon">&#127979;</div>
+          <div class="stat-label">总学校</div>
+          <div class="stat-value">{{ stats.totalSchools || 0 }}</div>
+        </div>
+        <div class="stat-card card-classes">
+          <div class="stat-icon">&#128218;</div>
+          <div class="stat-label">总班级</div>
+          <div class="stat-value">{{ stats.totalClasses || 0 }}</div>
+        </div>
+        <div class="stat-card card-materials">
+          <div class="stat-icon">&#127909;</div>
+          <div class="stat-label">总资料</div>
+          <div class="stat-value">{{ stats.totalMaterials || 0 }}</div>
+        </div>
+      </div>
+      <div class="stat-cards" style="margin-bottom:24px">
+        <div class="stat-card">
+          <div class="stat-label">待审核资料</div>
+          <div class="stat-value" style="color:#E6A23C">{{ stats.pendingReviewCount || 0 }}</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">今日上传</div>
+          <div class="stat-value">{{ stats.todayUploads || 0 }}</div>
+        </div>
+        <div class="stat-card card-todos">
+          <div class="stat-icon">&#128203;</div>
+          <div class="stat-label">待办任务</div>
+          <div class="stat-value" style="color:#9B59B6">{{ stats.pendingTodoCount || 0 }}</div>
+        </div>
+        <div class="stat-card card-notifications">
+          <div class="stat-icon">&#128276;</div>
+          <div class="stat-label">未读消息</div>
+          <div class="stat-value" style="color:#E74C3C">{{ stats.unreadNotificationCount || 0 }}</div>
+        </div>
+      </div>
+      <div class="chart-row">
+        <div class="chart-card">
+          <h3>资料上传趋势（近7天）</h3>
+          <div ref="trendChart" class="chart-container"></div>
+        </div>
+        <div class="chart-card">
+          <h3>资料类型分布</h3>
+          <div ref="pieChart" class="chart-container"></div>
+        </div>
+      </div>
+    </div>
+  `,
+  setup() {
+    const stats = ref({});
+    const trendChart = ref(null);
+    const pieChart = ref(null);
+    let trendInstance = null;
+    let pieInstance = null;
+
+    const placeholderStats = {
+      totalUsers: 1280, totalSchools: 15, totalClasses: 68,
+      totalMaterials: 356, pendingReviewCount: 12, todayUploads: 8,
+      todayActiveUsers: 45, totalVideos: 210,
+      pendingTodoCount: 0, unreadNotificationCount: 0
+    };
+
+    function loadStats() {
+      handleApi(
+        http.get('/dashboard/stats'),
+        placeholderStats
+      ).then(data => {
+        stats.value = data || placeholderStats;
+      });
+    }
+
+    function loadTrend() {
+      handleApi(
+        http.get('/dashboard/material-trend?days=7'),
+        []
+      ).then(data => {
+        const trendData = data && data.length ? data : [
+          { date: '2026-06-03', count: 5 }, { date: '2026-06-04', count: 8 },
+          { date: '2026-06-05', count: 3 }, { date: '2026-06-06', count: 12 },
+          { date: '2026-06-07', count: 7 }, { date: '2026-06-08', count: 9 },
+          { date: '2026-06-09', count: 6 }
+        ];
+        renderTrendChart(trendData);
+      });
+    }
+
+    function renderTrendChart(data) {
+      if (!trendChart.value) return;
+      if (!trendInstance) trendInstance = echarts.init(trendChart.value);
+      trendInstance.setOption({
+        tooltip: { trigger: 'axis' },
+        grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
+        xAxis: { type: 'category', data: data.map(d => d.date.substring(5)), boundaryGap: false },
+        yAxis: { type: 'value', minInterval: 1 },
+        series: [{
+          name: '上传数量', type: 'line', smooth: true,
+          data: data.map(d => d.count),
+          areaStyle: { color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+            { offset: 0, color: 'rgba(64,158,255,0.3)' },
+            { offset: 1, color: 'rgba(64,158,255,0.05)' }
+          ])},
+          lineStyle: { color: '#409EFF', width: 2 },
+          itemStyle: { color: '#409EFF' }
+        }]
+      });
+    }
+
+    function renderPieChart() {
+      if (!pieChart.value) return;
+      if (!pieInstance) pieInstance = echarts.init(pieChart.value);
+      pieInstance.setOption({
+        tooltip: { trigger: 'item', formatter: '{b}: {c} ({d}%)' },
+        legend: { bottom: 10, left: 'center' },
+        series: [{
+          type: 'pie', radius: ['40%', '70%'], center: ['50%', '45%'],
+          avoidLabelOverlap: false,
+          itemStyle: { borderRadius: 6, borderColor: '#fff', borderWidth: 2 },
+          label: { show: false },
+          emphasis: { label: { show: true, fontSize: 16, fontWeight: 'bold' } },
+          data: [
+            { value: 210, name: 'VIDEO', itemStyle: { color: '#409EFF' } },
+            { value: 98, name: 'PDF', itemStyle: { color: '#67C23A' } },
+            { value: 48, name: 'IMAGE', itemStyle: { color: '#E6A23C' } }
+          ]
+        }]
+      });
+    }
+
+    function handleResize() {
+      trendInstance && trendInstance.resize();
+      pieInstance && pieInstance.resize();
+    }
+
+    onMounted(() => {
+      loadStats();
+      loadTrend();
+      nextTick(renderPieChart);
+      window.addEventListener('resize', handleResize);
+    });
+    onUnmounted(() => {
+      window.removeEventListener('resize', handleResize);
+      trendInstance && trendInstance.dispose();
+      pieInstance && pieInstance.dispose();
+    });
+
+    return { stats, trendChart, pieChart };
+  }
+};
+
+const REVIEW_STATUS_MAP = {
+  PENDING: { label: '待审核', type: 'warning' },
+  APPROVED: { label: '已通过', type: 'success' },
+  REJECTED: { label: '已拒绝', type: 'danger' }
+};
+const MATERIAL_TYPE_MAP = {
+  VIDEO: '视频', PDF: 'PDF', IMAGE: '图片'
+};
+
+const MaterialReviewView = {
+  template: `
+    <div class="review-table-wrap">
+      <el-tabs v-model="activeTab" @tab-change="onTabChange">
+        <el-tab-pane label="待审核" name="pending">
+          <div class="search-bar">
+            <el-select v-model="pendingFilter.schoolId" placeholder="选择学校" clearable
+              style="width:220px" @change="loadPending">
+              <el-option v-for="s in schools" :key="s.id" :label="s.schoolName" :value="s.id" />
+            </el-select>
+            <el-button type="primary" @click="loadPending">刷新</el-button>
+          </div>
+          <el-table :data="pendingList" v-loading="pendingLoading" stripe style="width:100%"
+            empty-text="暂无待审核资料">
+            <el-table-column prop="title" label="标题" min-width="160" show-overflow-tooltip />
+            <el-table-column prop="materialType" label="类型" width="90">
+              <template #default="{ row }">
+                <el-tag size="small">{{ MATERIAL_TYPE_MAP[row.materialType] || row.materialType }}</el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column prop="uploaderName" label="上传者" width="100" />
+            <el-table-column prop="schoolName" label="学校" width="140" show-overflow-tooltip />
+            <el-table-column prop="createdAt" label="上传时间" width="170" />
+            <el-table-column label="审核状态" width="100">
+              <template #default="{ row }">
+                <el-tag :type="REVIEW_STATUS_MAP[row.reviewStatus]?.type || 'info'" size="small">
+                  {{ REVIEW_STATUS_MAP[row.reviewStatus]?.label || row.reviewStatus }}
+                </el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column label="操作" width="180" fixed="right">
+              <template #default="{ row }">
+                <el-button type="success" size="small" @click="approveMaterial(row)">通过</el-button>
+                <el-button type="danger" size="small" @click="openRejectDialog(row)">拒绝</el-button>
+              </template>
+            </el-table-column>
+          </el-table>
+          <div style="margin-top:16px;display:flex;justify-content:flex-end">
+            <el-pagination background layout="prev, pager, next" :total="pendingTotal"
+              :page-size="pendingFilter.size" v-model:current-page="pendingFilter.page"
+              @current-change="loadPending" />
+          </div>
+        </el-tab-pane>
+
+        <el-tab-pane label="全部资料" name="all">
+          <div class="search-bar">
+            <el-input v-model="allFilter.keyword" placeholder="搜索标题" clearable style="width:200px"
+              @keyup.enter="loadAll" />
+            <el-select v-model="allFilter.materialType" placeholder="资料类型" clearable style="width:120px">
+              <el-option label="视频" value="VIDEO" />
+              <el-option label="PDF" value="PDF" />
+              <el-option label="图片" value="IMAGE" />
+            </el-select>
+            <el-select v-model="allFilter.reviewStatus" placeholder="审核状态" clearable style="width:120px">
+              <el-option label="待审核" value="PENDING" />
+              <el-option label="已通过" value="APPROVED" />
+              <el-option label="已拒绝" value="REJECTED" />
+            </el-select>
+            <el-button type="primary" @click="loadAll">搜索</el-button>
+          </div>
+          <el-table :data="allList" v-loading="allLoading" stripe style="width:100%"
+            empty-text="暂无资料">
+            <el-table-column prop="title" label="标题" min-width="160" show-overflow-tooltip />
+            <el-table-column prop="materialType" label="类型" width="90">
+              <template #default="{ row }">
+                <el-tag size="small">{{ MATERIAL_TYPE_MAP[row.materialType] || row.materialType }}</el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column prop="uploaderName" label="上传者" width="100" />
+            <el-table-column prop="schoolName" label="学校" width="140" show-overflow-tooltip />
+            <el-table-column prop="createdAt" label="上传时间" width="170" />
+            <el-table-column label="审核状态" width="100">
+              <template #default="{ row }">
+                <el-tag :type="REVIEW_STATUS_MAP[row.reviewStatus]?.type || 'info'" size="small">
+                  {{ REVIEW_STATUS_MAP[row.reviewStatus]?.label || row.reviewStatus }}
+                </el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column label="操作" width="120" fixed="right">
+              <template #default="{ row }">
+                <el-button v-if="row.reviewStatus === 'PENDING'" type="success" size="small"
+                  @click="approveMaterial(row)">通过</el-button>
+                <el-button v-if="row.reviewStatus === 'PENDING'" type="danger" size="small"
+                  @click="openRejectDialog(row)">拒绝</el-button>
+                <span v-if="row.reviewStatus !== 'PENDING'" style="color:#909399;font-size:12px">已处理</span>
+              </template>
+            </el-table-column>
+          </el-table>
+          <div style="margin-top:16px;display:flex;justify-content:flex-end">
+            <el-pagination background layout="prev, pager, next" :total="allTotal"
+              :page-size="allFilter.size" v-model:current-page="allFilter.page"
+              @current-change="loadAll" />
+          </div>
+        </el-tab-pane>
+      </el-tabs>
+
+      <el-dialog v-model="rejectDialogVisible" title="拒绝原因" width="450px" :close-on-click-modal="false">
+        <el-input v-model="rejectComment" type="textarea" :rows="4" placeholder="请输入拒绝原因" maxlength="200"
+          show-word-limit />
+        <template #footer>
+          <el-button @click="rejectDialogVisible = false">取消</el-button>
+          <el-button type="danger" :loading="rejectLoading" @click="rejectMaterial">确认拒绝</el-button>
+        </template>
+      </el-dialog>
+    </div>
+  `,
+  setup() {
+    const activeTab = ref('pending');
+    const schools = ref([]);
+
+    const pendingFilter = reactive({ schoolId: null, page: 1, size: 20 });
+    const pendingList = ref([]);
+    const pendingTotal = ref(0);
+    const pendingLoading = ref(false);
+
+    const allFilter = reactive({ keyword: '', materialType: '', reviewStatus: '', page: 1, size: 20 });
+    const allList = ref([]);
+    const allTotal = ref(0);
+    const allLoading = ref(false);
+
+    const rejectDialogVisible = ref(false);
+    const rejectComment = ref('');
+    const rejectLoading = ref(false);
+    let rejectingRow = null;
+
+    function loadSchools() {
+      handleApi(http.get('/org/schools'), []).then(data => { schools.value = data || []; });
+    }
+
+    function loadPending() {
+      if (!pendingFilter.schoolId) {
+        if (schools.value.length > 0) pendingFilter.schoolId = schools.value[0].id;
+        else { pendingList.value = []; return; }
+      }
+      pendingLoading.value = true;
+      const params = {
+        schoolId: pendingFilter.schoolId,
+        page: pendingFilter.page - 1,
+        size: pendingFilter.size
+      };
+      http.get('/materials/pending-review', { params })
+        .then(res => {
+          const d = res.data;
+          pendingList.value = d.content || [];
+          pendingTotal.value = d.totalElements || 0;
+        })
+        .catch(() => { pendingList.value = []; pendingTotal.value = 0; })
+        .finally(() => { pendingLoading.value = false; });
+    }
+
+    function loadAll() {
+      allLoading.value = true;
+      const params = {
+        keyword: allFilter.keyword || undefined,
+        materialType: allFilter.materialType || undefined,
+        reviewStatus: allFilter.reviewStatus || undefined,
+        page: allFilter.page - 1,
+        size: allFilter.size
+      };
+      http.get('/materials/search', { params })
+        .then(res => {
+          const d = res.data;
+          allList.value = d.content || [];
+          allTotal.value = d.totalElements || 0;
+        })
+        .catch(() => { allList.value = []; allTotal.value = 0; })
+        .finally(() => { allLoading.value = false; });
+    }
+
+    function onTabChange(tab) {
+      if (tab === 'pending') loadPending();
+      else loadAll();
+    }
+
+    function approveMaterial(row) {
+      ElMessageBox.confirm('确定通过该资料的审核吗？', '审核确认', {
+        confirmButtonText: '确定', cancelButtonText: '取消', type: 'success'
+      }).then(() => {
+        http.post('/materials/' + row.id + '/review', { action: 'APPROVE', comment: '审核通过' })
+          .then(() => {
+            ElMessage.success('审核通过');
+            loadPending();
+            if (activeTab.value === 'all') loadAll();
+          });
+      }).catch(() => {});
+    }
+
+    function openRejectDialog(row) {
+      rejectingRow = row;
+      rejectComment.value = '';
+      rejectDialogVisible.value = true;
+    }
+
+    function rejectMaterial() {
+      if (!rejectComment.value.trim()) {
+        ElMessage.warning('请输入拒绝原因'); return;
+      }
+      rejectLoading.value = true;
+      http.post('/materials/' + rejectingRow.id + '/review', {
+        action: 'REJECT', comment: rejectComment.value
+      }).then(() => {
+        ElMessage.success('已拒绝');
+        rejectDialogVisible.value = false;
+        loadPending();
+        if (activeTab.value === 'all') loadAll();
+      }).finally(() => { rejectLoading.value = false; });
+    }
+
+    onMounted(() => {
+      loadSchools().then(() => loadPending());
+      loadAll();
+    });
+
+    return {
+      activeTab, schools, pendingFilter, pendingList, pendingTotal, pendingLoading,
+      allFilter, allList, allTotal, allLoading,
+      rejectDialogVisible, rejectComment, rejectLoading,
+      REVIEW_STATUS_MAP, MATERIAL_TYPE_MAP,
+      onTabChange, loadPending, loadAll, approveMaterial, openRejectDialog, rejectMaterial
+    };
+  }
+};
+
+const UserManagementView = {
+  template: `
+    <div class="page-card">
+      <h3>用户管理</h3>
+      <div class="search-bar">
+        <el-input v-model="searchPhone" placeholder="按手机号搜索用户" clearable style="width:240px"
+          @keyup.enter="searchUser" />
+        <el-button type="primary" @click="searchUser">搜索</el-button>
+      </div>
+      <el-descriptions v-if="userInfo" :column="2" border style="margin-top:16px">
+        <el-descriptions-item label="用户ID">{{ userInfo.id }}</el-descriptions-item>
+        <el-descriptions-item label="用户名">{{ userInfo.username || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="昵称">{{ userInfo.nickname || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="真实姓名">{{ userInfo.realName || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="手机号">{{ userInfo.phone || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="性别">{{ genderLabel }}</el-descriptions-item>
+        <el-descriptions-item label="角色">
+          <el-tag v-for="r in (userInfo.roles || [])" :key="r" size="small" style="margin-right:4px">{{ r }}</el-tag>
+          <span v-if="!userInfo.roles || userInfo.roles.length === 0">-</span>
+        </el-descriptions-item>
+        <el-descriptions-item label="学校">{{ userInfo.schoolName || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="班级">{{ userInfo.className || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="年级">{{ userInfo.gradeName || '-' }}</el-descriptions-item>
+      </el-descriptions>
+      <el-empty v-else description="请搜索用户查看详情" />
+
+      <el-divider />
+
+      <h3 style="font-size:16px;margin-bottom:16px">教师列表</h3>
+      <div class="search-bar">
+        <el-select v-model="selectedSchoolId" placeholder="选择学校" clearable style="width:220px">
+          <el-option v-for="s in schools" :key="s.id" :label="s.schoolName" :value="s.id" />
+        </el-select>
+        <el-button type="primary" :disabled="!selectedSchoolId" @click="loadTeachers">查询教师</el-button>
+      </div>
+      <el-table :data="teacherList" v-loading="teacherLoading" stripe empty-text="暂无教师数据">
+        <el-table-column prop="id" label="ID" width="80" />
+        <el-table-column prop="realName" label="姓名" width="120">
+          <template #default="{ row }">{{ row.realName || row.nickname || '-' }}</template>
+        </el-table-column>
+        <el-table-column prop="phone" label="手机号" width="140" />
+        <el-table-column label="角色" width="120">
+          <template #default="{ row }">
+            <el-tag size="small">{{ (row.roles && row.roles[0]) || 'TEACHER' }}</el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column prop="schoolName" label="学校" min-width="160" show-overflow-tooltip />
+      </el-table>
+    </div>
+  `,
+  setup() {
+    const searchPhone = ref('');
+    const userInfo = ref(null);
+    const schools = ref([]);
+    const selectedSchoolId = ref(null);
+    const teacherList = ref([]);
+    const teacherLoading = ref(false);
+
+    const genderLabel = computed(() => {
+      if (!userInfo.value) return '-';
+      const g = userInfo.value.gender;
+      if (g === 1) return '男';
+      if (g === 2) return '女';
+      return '未知';
+    });
+
+    function searchUser() {
+      if (!searchPhone.value) {
+        ElMessage.warning('请输入手机号'); return;
+      }
+      http.get('/user/me').then(res => {
+        userInfo.value = res.data;
+      }).catch(() => {
+        ElMessage.info('未找到对应用户信息');
+      });
+    }
+
+    function loadSchools() {
+      handleApi(http.get('/org/schools'), []).then(data => { schools.value = data || []; });
+    }
+
+    function loadTeachers() {
+      if (!selectedSchoolId.value) return;
+      teacherLoading.value = true;
+      http.get('/edu-office/teachers/school/' + selectedSchoolId.value)
+        .then(res => { teacherList.value = res.data || []; })
+        .catch(() => { teacherList.value = []; })
+        .finally(() => { teacherLoading.value = false; });
+    }
+
+    onMounted(loadSchools);
+
+    return {
+      searchPhone, userInfo, genderLabel, schools, selectedSchoolId,
+      teacherList, teacherLoading, searchUser, loadTeachers
+    };
+  }
+};
+
+const SchoolManagementView = {
+  template: `
+    <div class="page-card">
+      <h3>学校管理</h3>
+      <div class="search-bar">
+        <el-input v-model="searchKeyword" placeholder="搜索学校名称" clearable style="width:220px"
+          @keyup.enter="filterSchools" />
+        <el-button type="primary" @click="filterSchools">搜索</el-button>
+        <el-button @click="openCreateDialog">新建学校</el-button>
+      </div>
+      <el-table :data="filteredSchools" v-loading="loading" stripe empty-text="暂无学校数据">
+        <el-table-column prop="id" label="ID" width="80" />
+        <el-table-column prop="schoolName" label="学校名称" min-width="160" show-overflow-tooltip />
+        <el-table-column prop="schoolCode" label="学校编码" width="120" />
+        <el-table-column prop="province" label="省份" width="90" />
+        <el-table-column prop="city" label="城市" width="90" />
+        <el-table-column prop="district" label="区县" width="90" />
+        <el-table-column prop="contactPhone" label="联系电话" width="140" />
+        <el-table-column label="状态" width="80">
+          <template #default="{ row }">
+            <el-tag :type="row.status === 1 ? 'success' : 'danger'" size="small">
+              {{ row.status === 1 ? '正常' : '停用' }}
+            </el-tag>
+          </template>
+        </el-table-column>
+      </el-table>
+
+      <el-dialog v-model="createDialogVisible" title="新建学校" width="550px" :close-on-click-modal="false">
+        <el-form :model="createForm" label-width="90px">
+          <el-form-item label="学校名称">
+            <el-input v-model="createForm.schoolName" placeholder="请输入学校名称" />
+          </el-form-item>
+          <el-form-item label="学校编码">
+            <el-input v-model="createForm.schoolCode" placeholder="请输入学校编码" />
+          </el-form-item>
+          <el-form-item label="省份">
+            <el-input v-model="createForm.province" placeholder="省份" />
+          </el-form-item>
+          <el-form-item label="城市">
+            <el-input v-model="createForm.city" placeholder="城市" />
+          </el-form-item>
+          <el-form-item label="区县">
+            <el-input v-model="createForm.district" placeholder="区县" />
+          </el-form-item>
+          <el-form-item label="详细地址">
+            <el-input v-model="createForm.address" placeholder="详细地址" />
+          </el-form-item>
+          <el-form-item label="联系电话">
+            <el-input v-model="createForm.contactPhone" placeholder="联系电话" />
+          </el-form-item>
+        </el-form>
+        <template #footer>
+          <el-button @click="createDialogVisible = false">取消</el-button>
+          <el-button type="primary" :loading="createLoading" @click="createSchool">创建</el-button>
+        </template>
+      </el-dialog>
+    </div>
+  `,
+  setup() {
+    const loading = ref(false);
+    const schools = ref([]);
+    const filteredSchools = ref([]);
+    const searchKeyword = ref('');
+    const createDialogVisible = ref(false);
+    const createLoading = ref(false);
+    const createForm = reactive({
+      schoolName: '', schoolCode: '', province: '', city: '',
+      district: '', address: '', contactPhone: ''
+    });
+
+    function loadSchools() {
+      loading.value = true;
+      handleApi(http.get('/org/schools'), [])
+        .then(data => {
+          schools.value = data || [];
+          filteredSchools.value = schools.value;
+        })
+        .finally(() => { loading.value = false; });
+    }
+
+    function filterSchools() {
+      if (!searchKeyword.value) { filteredSchools.value = schools.value; return; }
+      const kw = searchKeyword.value.toLowerCase();
+      filteredSchools.value = schools.value.filter(s =>
+        (s.schoolName || '').toLowerCase().includes(kw) ||
+        (s.schoolCode || '').toLowerCase().includes(kw)
+      );
+    }
+
+    function openCreateDialog() {
+      Object.assign(createForm, {
+        schoolName: '', schoolCode: '', province: '', city: '',
+        district: '', address: '', contactPhone: ''
+      });
+      createDialogVisible.value = true;
+    }
+
+    function createSchool() {
+      if (!createForm.schoolName) { ElMessage.warning('请输入学校名称'); return; }
+      createLoading.value = true;
+      http.post('/org/schools', createForm)
+        .then(() => {
+          ElMessage.success('创建成功');
+          createDialogVisible.value = false;
+          loadSchools();
+        })
+        .finally(() => { createLoading.value = false; });
+    }
+
+    onMounted(loadSchools);
+
+    return {
+      loading, schools, filteredSchools, searchKeyword,
+      createDialogVisible, createLoading, createForm,
+      filterSchools, openCreateDialog, createSchool
+    };
+  }
+};
+
+const ClassManagementView = {
+  template: `
+    <div class="page-card">
+      <h3>班级管理</h3>
+      <div class="search-bar">
+        <el-select v-model="selectedSchoolId" placeholder="选择学校" clearable style="width:220px"
+          @change="onSchoolChange">
+          <el-option v-for="s in schools" :key="s.id" :label="s.schoolName" :value="s.id" />
+        </el-select>
+        <el-button type="primary" :disabled="!selectedSchoolId" @click="loadClasses">查询班级</el-button>
+        <el-button :disabled="!selectedSchoolId" @click="openCreateDialog">新建班级</el-button>
+      </div>
+      <el-table :data="classList" v-loading="loading" stripe empty-text="暂无班级数据">
+        <el-table-column prop="id" label="ID" width="80" />
+        <el-table-column prop="className" label="班级名称" min-width="140" show-overflow-tooltip />
+        <el-table-column prop="classCode" label="班级编码" width="120" />
+        <el-table-column prop="gradeName" label="年级" width="100" />
+        <el-table-column prop="schoolName" label="学校" width="160" show-overflow-tooltip />
+        <el-table-column prop="teacherName" label="班主任" width="100" />
+        <el-table-column prop="academicYear" label="学年" width="100" />
+        <el-table-column prop="studentCount" label="学生数" width="80" />
+        <el-table-column label="状态" width="80">
+          <template #default="{ row }">
+            <el-tag :type="row.status === 1 ? 'success' : 'danger'" size="small">
+              {{ row.status === 1 ? '正常' : '停用' }}
+            </el-tag>
+          </template>
+        </el-table-column>
+      </el-table>
+
+      <el-dialog v-model="createDialogVisible" title="新建班级" width="500px" :close-on-click-modal="false">
+        <el-form :model="createForm" label-width="90px">
+          <el-form-item label="班级名称">
+            <el-input v-model="createForm.className" placeholder="请输入班级名称" />
+          </el-form-item>
+          <el-form-item label="年级ID">
+            <el-input v-model.number="createForm.gradeId" placeholder="请输入年级ID" type="number" />
+          </el-form-item>
+          <el-form-item label="学年">
+            <el-input v-model="createForm.academicYear" placeholder="例如: 2025-2026" />
+          </el-form-item>
+        </el-form>
+        <template #footer>
+          <el-button @click="createDialogVisible = false">取消</el-button>
+          <el-button type="primary" :loading="createLoading" @click="createClass">创建</el-button>
+        </template>
+      </el-dialog>
+    </div>
+  `,
+  setup() {
+    const loading = ref(false);
+    const schools = ref([]);
+    const selectedSchoolId = ref(null);
+    const classList = ref([]);
+    const createDialogVisible = ref(false);
+    const createLoading = ref(false);
+    const createForm = reactive({ className: '', gradeId: null, academicYear: '' });
+
+    function loadSchools() {
+      handleApi(http.get('/org/schools'), []).then(data => { schools.value = data || []; });
+    }
+
+    function onSchoolChange() { classList.value = []; }
+
+    function loadClasses() {
+      if (!selectedSchoolId.value) return;
+      loading.value = true;
+      http.get('/org/classes/school/' + selectedSchoolId.value)
+        .then(res => { classList.value = res.data || []; })
+        .catch(() => { classList.value = []; })
+        .finally(() => { loading.value = false; });
+    }
+
+    function openCreateDialog() {
+      Object.assign(createForm, { className: '', gradeId: null, academicYear: '' });
+      createDialogVisible.value = true;
+    }
+
+    function createClass() {
+      if (!createForm.className) { ElMessage.warning('请输入班级名称'); return; }
+      createLoading.value = true;
+      http.post('/org/classes', {
+        className: createForm.className,
+        gradeId: createForm.gradeId,
+        schoolId: selectedSchoolId.value,
+        academicYear: createForm.academicYear
+      }).then(() => {
+        ElMessage.success('创建成功');
+        createDialogVisible.value = false;
+        loadClasses();
+      }).finally(() => { createLoading.value = false; });
+    }
+
+    onMounted(loadSchools);
+
+    return {
+      loading, schools, selectedSchoolId, classList,
+      createDialogVisible, createLoading, createForm,
+      onSchoolChange, loadClasses, openCreateDialog, createClass
+    };
+  }
+};
+
+const PRIORITY_MAP = {
+  HIGH: { label: '高', type: 'danger' },
+  MEDIUM: { label: '中', type: 'warning' },
+  LOW: { label: '低', type: 'info' }
+};
+const TODO_STATUS_MAP = {
+  PENDING: { label: '待处理', type: 'warning' },
+  IN_PROGRESS: { label: '进行中', type: 'primary' },
+  COMPLETED: { label: '已完成', type: 'success' },
+  CANCELLED: { label: '已取消', type: 'info' }
+};
+const TASK_TYPE_MAP = {
+  ASSIGNMENT: '作业', REVIEW: '审核', NOTIFICATION: '通知', OTHER: '其他'
+};
+const ASSIGNEE_TYPE_MAP = {
+  ALL: '全部', SCHOOL: '学校', CLASS: '班级', TEACHER: '教师'
+};
+
+const TodoManagementView = {
+  template: `
+    <div class="page-card">
+      <h3>待办管理</h3>
+      <div style="margin-bottom:16px;display:flex;justify-content:space-between;align-items:center">
+        <el-tabs v-model="activeTab" @tab-change="onTabChange" style="flex:1">
+          <el-tab-pane label="我创建的" name="created" />
+          <el-tab-pane label="待办任务" name="my" />
+        </el-tabs>
+        <el-button type="primary" @click="openCreateDialog">创建待办</el-button>
+      </div>
+
+      <div v-if="activeTab === 'created'">
+        <el-table :data="createdList" v-loading="createdLoading" stripe style="width:100%" empty-text="暂无数据">
+          <el-table-column prop="title" label="标题" min-width="140" show-overflow-tooltip />
+          <el-table-column prop="taskType" label="类型" width="90">
+            <template #default="{ row }">
+              <el-tag size="small">{{ TASK_TYPE_MAP[row.taskType] || row.taskType }}</el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column prop="priority" label="优先级" width="80">
+            <template #default="{ row }">
+              <el-tag :type="PRIORITY_MAP[row.priority]?.type || 'info'" size="small">
+                {{ PRIORITY_MAP[row.priority]?.label || row.priority }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column prop="status" label="状态" width="90">
+            <template #default="{ row }">
+              <el-tag :type="TODO_STATUS_MAP[row.status]?.type || 'info'" size="small">
+                {{ TODO_STATUS_MAP[row.status]?.label || row.status }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column prop="deadline" label="截止时间" width="170" />
+          <el-table-column prop="urgeCount" label="催办次数" width="90" />
+          <el-table-column label="完成进度" width="100">
+            <template #default="{ row }">
+              {{ row.completedCount || 0 }}/{{ row.totalCount || 0 }}
+            </template>
+          </el-table-column>
+          <el-table-column label="操作" width="90" fixed="right">
+            <template #default="{ row }">
+              <el-button type="warning" size="small" @click="urgeTodo(row)">催办</el-button>
+            </template>
+          </el-table-column>
+        </el-table>
+        <div style="margin-top:16px;display:flex;justify-content:flex-end">
+          <el-pagination background layout="prev, pager, next" :total="createdTotal"
+            :page-size="createdPage.size" v-model:current-page="createdPage.page"
+            @current-change="loadCreated" />
+        </div>
+      </div>
+
+      <div v-if="activeTab === 'my'">
+        <el-table :data="myList" v-loading="myLoading" stripe style="width:100%" empty-text="暂无待办任务">
+          <el-table-column prop="title" label="标题" min-width="160" show-overflow-tooltip />
+          <el-table-column prop="priority" label="优先级" width="80">
+            <template #default="{ row }">
+              <el-tag :type="PRIORITY_MAP[row.priority]?.type || 'info'" size="small">
+                {{ PRIORITY_MAP[row.priority]?.label || row.priority }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column prop="deadline" label="截止时间" width="170" />
+          <el-table-column prop="status" label="状态" width="90">
+            <template #default="{ row }">
+              <el-tag :type="TODO_STATUS_MAP[row.status]?.type || 'info'" size="small">
+                {{ TODO_STATUS_MAP[row.status]?.label || row.status }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column label="操作" width="90" fixed="right">
+            <template #default="{ row }">
+              <el-button v-if="row.status !== 'COMPLETED'" type="success" size="small"
+                @click="openCompleteDialog(row)">完成</el-button>
+            </template>
+          </el-table-column>
+        </el-table>
+        <div style="margin-top:16px;display:flex;justify-content:flex-end">
+          <el-pagination background layout="prev, pager, next" :total="myTotal"
+            :page-size="myPage.size" v-model:current-page="myPage.page"
+            @current-change="loadMy" />
+        </div>
+      </div>
+
+      <el-dialog v-model="completeDialogVisible" title="完成待办" width="450px" :close-on-click-modal="false">
+        <el-form :model="completeForm" label-width="80px">
+          <el-form-item label="反馈内容">
+            <el-input v-model="completeForm.feedback" type="textarea" :rows="4"
+              placeholder="请输入完成反馈" maxlength="500" show-word-limit />
+          </el-form-item>
+        </el-form>
+        <template #footer>
+          <el-button @click="completeDialogVisible = false">取消</el-button>
+          <el-button type="primary" :loading="completeLoading" @click="completeTodo">确认完成</el-button>
+        </template>
+      </el-dialog>
+
+      <el-dialog v-model="createDialogVisible" title="创建待办" width="550px" :close-on-click-modal="false">
+        <el-form :model="createForm" label-width="90px">
+          <el-form-item label="标题">
+            <el-input v-model="createForm.title" placeholder="请输入待办标题" />
+          </el-form-item>
+          <el-form-item label="描述">
+            <el-input v-model="createForm.description" type="textarea" :rows="3"
+              placeholder="请输入待办描述" />
+          </el-form-item>
+          <el-form-item label="任务类型">
+            <el-select v-model="createForm.taskType" placeholder="请选择" style="width:100%">
+              <el-option v-for="(v, k) in TASK_TYPE_MAP" :key="k" :label="v" :value="k" />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="优先级">
+            <el-select v-model="createForm.priority" placeholder="请选择" style="width:100%">
+              <el-option v-for="(v, k) in PRIORITY_MAP" :key="k" :label="v.label" :value="k" />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="截止时间">
+            <el-date-picker v-model="createForm.deadline" type="datetime"
+              placeholder="选择截止时间" style="width:100%" value-format="YYYY-MM-DD HH:mm:ss" />
+          </el-form-item>
+          <el-form-item label="分配类型">
+            <el-select v-model="createForm.assigneeType" placeholder="请选择" style="width:100%">
+              <el-option v-for="(v, k) in ASSIGNEE_TYPE_MAP" :key="k" :label="v" :value="k" />
+            </el-select>
+          </el-form-item>
+        </el-form>
+        <template #footer>
+          <el-button @click="createDialogVisible = false">取消</el-button>
+          <el-button type="primary" :loading="createLoading" @click="createTodo">创建</el-button>
+        </template>
+      </el-dialog>
+    </div>
+  `,
+  setup() {
+    const activeTab = ref('created');
+
+    const createdList = ref([]);
+    const createdTotal = ref(0);
+    const createdLoading = ref(false);
+    const createdPage = reactive({ page: 1, size: 20 });
+
+    const myList = ref([]);
+    const myTotal = ref(0);
+    const myLoading = ref(false);
+    const myPage = reactive({ page: 1, size: 20 });
+
+    const completeDialogVisible = ref(false);
+    const completeLoading = ref(false);
+    const completeForm = reactive({ feedback: '' });
+    let completingRow = null;
+
+    const createDialogVisible = ref(false);
+    const createLoading = ref(false);
+    const createForm = reactive({
+      title: '', description: '', taskType: '', priority: 'MEDIUM',
+      deadline: '', assigneeType: ''
+    });
+
+    function loadCreated() {
+      createdLoading.value = true;
+      http.get('/todos/created', { params: { page: createdPage.page - 1, size: createdPage.size } })
+        .then(res => {
+          const d = res.data;
+          createdList.value = d.content || [];
+          createdTotal.value = d.totalElements || 0;
+        })
+        .catch(() => { createdList.value = []; createdTotal.value = 0; })
+        .finally(() => { createdLoading.value = false; });
+    }
+
+    function loadMy() {
+      myLoading.value = true;
+      http.get('/todos/my', { params: { page: myPage.page - 1, size: myPage.size } })
+        .then(res => {
+          const d = res.data;
+          myList.value = d.content || [];
+          myTotal.value = d.totalElements || 0;
+        })
+        .catch(() => { myList.value = []; myTotal.value = 0; })
+        .finally(() => { myLoading.value = false; });
+    }
+
+    function onTabChange(tab) {
+      if (tab === 'created') loadCreated();
+      else loadMy();
+    }
+
+    function urgeTodo(row) {
+      ElMessageBox.confirm('确定要催办该待办吗？', '催办确认', {
+        confirmButtonText: '确定', cancelButtonText: '取消', type: 'warning'
+      }).then(() => {
+        http.post('/todos/' + row.id + '/urge', { message: '请尽快完成' }).then(() => {
+          ElMessage.success('催办成功');
+          loadCreated();
+        });
+      }).catch(() => {});
+    }
+
+    function openCompleteDialog(row) {
+      completingRow = row;
+      completeForm.feedback = '';
+      completeDialogVisible.value = true;
+    }
+
+    function completeTodo() {
+      completeLoading.value = true;
+      http.post('/todos/' + completingRow.id + '/complete', { feedback: completeForm.feedback })
+        .then(() => {
+          ElMessage.success('已完成');
+          completeDialogVisible.value = false;
+          loadMy();
+        })
+        .finally(() => { completeLoading.value = false; });
+    }
+
+    function openCreateDialog() {
+      Object.assign(createForm, {
+        title: '', description: '', taskType: '', priority: 'MEDIUM',
+        deadline: '', assigneeType: ''
+      });
+      createDialogVisible.value = true;
+    }
+
+    function createTodo() {
+      if (!createForm.title) { ElMessage.warning('请输入待办标题'); return; }
+      createLoading.value = true;
+      http.post('/todos', createForm)
+        .then(() => {
+          ElMessage.success('创建成功');
+          createDialogVisible.value = false;
+          loadCreated();
+        })
+        .finally(() => { createLoading.value = false; });
+    }
+
+    onMounted(loadCreated);
+
+    return {
+      activeTab, PRIORITY_MAP, TODO_STATUS_MAP, TASK_TYPE_MAP, ASSIGNEE_TYPE_MAP,
+      createdList, createdTotal, createdLoading, createdPage,
+      myList, myTotal, myLoading, myPage,
+      completeDialogVisible, completeLoading, completeForm,
+      createDialogVisible, createLoading, createForm,
+      onTabChange, loadCreated, loadMy, urgeTodo,
+      openCompleteDialog, completeTodo, openCreateDialog, createTodo
+    };
+  }
+};
+
+const MSG_TYPE_MAP = {
+  SYSTEM: { label: '系统', type: 'primary' },
+  TODO: { label: '待办', type: 'warning' },
+  REVIEW: { label: '审核', type: 'success' },
+  NOTICE: { label: '通知', type: 'info' }
+};
+
+const NotificationView = {
+  template: `
+    <div class="page-card">
+      <h3>消息通知</h3>
+      <div style="margin-bottom:16px;display:flex;justify-content:flex-end">
+        <el-button type="primary" @click="markAllRead">全部已读</el-button>
+        <el-button @click="loadNotifications" style="margin-left:8px">刷新</el-button>
+      </div>
+      <el-table :data="notifications" v-loading="loading" stripe style="width:100%" empty-text="暂无消息">
+        <el-table-column prop="title" label="标题" min-width="140" show-overflow-tooltip />
+        <el-table-column prop="content" label="内容" min-width="200" show-overflow-tooltip>
+          <template #default="{ row }">
+            {{ (row.content || '').length > 50 ? row.content.substring(0, 50) + '...' : row.content }}
+          </template>
+        </el-table-column>
+        <el-table-column prop="msgType" label="类型" width="90">
+          <template #default="{ row }">
+            <el-tag :type="MSG_TYPE_MAP[row.msgType]?.type || 'info'" size="small">
+              {{ MSG_TYPE_MAP[row.msgType]?.label || row.msgType }}
+            </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column label="已读" width="80">
+          <template #default="{ row }">
+            <el-tag :type="row.isRead ? 'success' : 'danger'" size="small">
+              {{ row.isRead ? '已读' : '未读' }}
+            </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column prop="createdAt" label="时间" width="170" />
+        <el-table-column label="操作" width="100" fixed="right">
+          <template #default="{ row }">
+            <el-button v-if="!row.isRead" type="primary" size="small" @click="markRead(row)">标记已读</el-button>
+          </template>
+        </el-table-column>
+      </el-table>
+      <div style="margin-top:16px;display:flex;justify-content:flex-end">
+        <el-pagination background layout="prev, pager, next" :total="total"
+          :page-size="page.size" v-model:current-page="page.page"
+          @current-change="loadNotifications" />
+      </div>
+    </div>
+  `,
+  setup() {
+    const notifications = ref([]);
+    const total = ref(0);
+    const loading = ref(false);
+    const page = reactive({ page: 1, size: 20 });
+
+    function loadNotifications() {
+      loading.value = true;
+      http.get('/notifications', { params: { page: page.page - 1, size: page.size } })
+        .then(res => {
+          const d = res.data;
+          notifications.value = d.content || [];
+          total.value = d.totalElements || 0;
+        })
+        .catch(() => { notifications.value = []; total.value = 0; })
+        .finally(() => { loading.value = false; });
+    }
+
+    function markRead(row) {
+      http.put('/notifications/' + row.id + '/read').then(() => {
+        ElMessage.success('已标记为已读');
+        row.isRead = true;
+      });
+    }
+
+    function markAllRead() {
+      ElMessageBox.confirm('确定将所有消息标记为已读吗？', '提示', {
+        confirmButtonText: '确定', cancelButtonText: '取消', type: 'info'
+      }).then(() => {
+        http.put('/notifications/read-all').then(() => {
+          ElMessage.success('已全部标记为已读');
+          loadNotifications();
+        });
+      }).catch(() => {});
+    }
+
+    onMounted(loadNotifications);
+
+    return { MSG_TYPE_MAP, notifications, total, loading, page, loadNotifications, markRead, markAllRead };
+  }
+};
+
+const routes = [
+  { path: '/login', component: LoginPage },
+  {
+    path: '/',
+    component: AdminLayout,
+    redirect: '/dashboard',
+    children: [
+      { path: '/dashboard', redirect: '/' },
+      { path: '/', component: DashboardView },
+      { path: '/materials', component: MaterialReviewView },
+      { path: '/users', component: UserManagementView },
+      { path: '/schools', component: SchoolManagementView },
+      { path: '/classes', component: ClassManagementView },
+      { path: '/todos', component: TodoManagementView },
+      { path: '/notifications', component: NotificationView }
+    ]
+  }
+];
+
+const router = createRouter({
+  history: createWebHashHistory(),
+  routes
+});
+
+router.beforeEach((to, from, next) => {
+  const token = localStorage.getItem('access_token');
+  if (to.path !== '/login' && !token) {
+    next('/login');
+  } else if (to.path === '/login' && token) {
+    next('/');
+  } else {
+    next();
+  }
+});
+
+const app = createApp({});
+app.use(router);
+app.use(ElementPlus, { locale: ElementPlusLocaleZhCn });
+app.mount('#app');
+</script>
+</body>
+</html>

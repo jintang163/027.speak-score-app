@@ -153,4 +153,13 @@ class MaterialService {
       return null;
     }
   }
+
+  Future<Map<String, dynamic>?> getVideoUploadAuth(int materialId) async {
+    try {
+      final response = await _apiClient.get('/materials/$materialId/upload-auth');
+      return response.data['data'] as Map<String, dynamic>?;
+    } catch (_) {
+      return null;
+    }
+  }
 }
