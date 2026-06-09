@@ -54,6 +54,7 @@ public class HomeController {
             case TEACHER:
                 menus.add(new HomeMenuDTO.MenuItem("task", "任务管理", "book", "/teacher/task"));
                 menus.add(new HomeMenuDTO.MenuItem("students", "学生管理", "people", "/teacher/students"));
+                menus.add(new HomeMenuDTO.MenuItem("material", "资料管理", "video_library", "/teacher/material"));
                 menus.add(new HomeMenuDTO.MenuItem("ranking", "成绩排行", "trophy", "/teacher/ranking"));
                 menus.add(new HomeMenuDTO.MenuItem("resource", "资料管理", "video", "/teacher/resource"));
                 menus.add(new HomeMenuDTO.MenuItem("message", "消息通知", "notifications", "/teacher/message"));
@@ -61,6 +62,7 @@ public class HomeController {
                 break;
             case EDU_OFFICE:
                 menus.add(new HomeMenuDTO.MenuItem("school", "学校管理", "school", "/edu-office/school"));
+                menus.add(new HomeMenuDTO.MenuItem("material", "资料审核", "video_library", "/edu-office/material"));
                 menus.add(new HomeMenuDTO.MenuItem("teachers", "教师管理", "people", "/edu-office/teachers"));
                 menus.add(new HomeMenuDTO.MenuItem("classes", "班级管理", "grid", "/edu-office/classes"));
                 menus.add(new HomeMenuDTO.MenuItem("ranking", "全校排行", "trophy", "/edu-office/ranking"));

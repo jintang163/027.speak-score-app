@@ -168,6 +168,86 @@ CREATE TABLE sys_sms_code (
     INDEX idx_phone (phone)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE mat_tag (
+    id          BIGINT AUTO_INCREMENT PRIMARY KEY,
+    tag_name    VARCHAR(50) NOT NULL UNIQUE,
+    tag_type    VARCHAR(20) NOT NULL DEFAULT 'CUSTOM' COMMENT 'SYSTEM,CUSTOM',
+    created_at  DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at  DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    deleted     BIT(1)      NOT NULL DEFAULT 0
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE mat_material (
+    id              BIGINT AUTO_INCREMENT PRIMARY KEY,
+    title           VARCHAR(200) NOT NULL,
+    description     VARCHAR(1000),
+    material_type   VARCHAR(20)  NOT NULL COMMENT 'VIDEO,PDF,IMAGE',
+    file_url        VARCHAR(1000) NOT NULL,
+    file_size       BIGINT       NOT NULL DEFAULT 0,
+    file_name       VARCHAR(300),
+    mime_type       VARCHAR(100),
+    cover_url       VARCHAR(1000),
+    duration        INT COMMENT 'video duration in seconds',
+    hls_url         VARCHAR(1000) COMMENT 'HLS transcoded URL for video',
+    transcode_status VARCHAR(20) DEFAULT 'NONE' COMMENT 'NONE,PENDING,PROCESSING,DONE,FAILED',
+    review_status   VARCHAR(20)  NOT NULL DEFAULT 'PENDING' COMMENT 'PENDING,APPROVED,REJECTED',
+    review_comment  VARCHAR(500),
+    reviewer_id     BIGINT,
+    scope           VARCHAR(20)  NOT NULL DEFAULT 'SCHOOL' COMMENT 'SCHOOL,CLASS',
+    uploader_id     BIGINT       NOT NULL,
+    school_id       BIGINT,
+    class_id        BIGINT,
+    grade_level     INT COMMENT 'applicable grade level',
+    view_count      INT          NOT NULL DEFAULT 0,
+    download_count  INT          NOT NULL DEFAULT 0,
+    created_at      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    deleted         BIT(1)       NOT NULL DEFAULT 0,
+    INDEX idx_type (material_type),
+    INDEX idx_uploader (uploader_id),
+    INDEX idx_school (school_id),
+    INDEX idx_class (class_id),
+    INDEX idx_review (review_status),
+    INDEX idx_scope (scope),
+    CONSTRAINT fk_mat_uploader FOREIGN KEY (uploader_id) REFERENCES sys_user(id),
+    CONSTRAINT fk_mat_school FOREIGN KEY (school_id) REFERENCES org_school(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE mat_material_tag (
+    id          BIGINT AUTO_INCREMENT PRIMARY KEY,
+    material_id BIGINT NOT NULL,
+    tag_id      BIGINT NOT NULL,
+    created_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    deleted     BIT(1)   NOT NULL DEFAULT 0,
+    UNIQUE KEY uk_material_tag (material_id, tag_id),
+    INDEX idx_material (material_id),
+    INDEX idx_tag (tag_id),
+    CONSTRAINT fk_mt_material FOREIGN KEY (material_id) REFERENCES mat_material(id),
+    CONSTRAINT fk_mt_tag FOREIGN KEY (tag_id) REFERENCES mat_tag(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE mat_review_log (
+    id              BIGINT AUTO_INCREMENT PRIMARY KEY,
+    material_id     BIGINT       NOT NULL,
+    reviewer_id     BIGINT       NOT NULL,
+    action          VARCHAR(20)  NOT NULL COMMENT 'APPROVE,REJECT',
+    comment         VARCHAR(500),
+    created_at      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    deleted         BIT(1)       NOT NULL DEFAULT 0,
+    INDEX idx_material (material_id),
+    CONSTRAINT fk_rl_material FOREIGN KEY (material_id) REFERENCES mat_material(id),
+    CONSTRAINT fk_rl_reviewer FOREIGN KEY (reviewer_id) REFERENCES sys_user(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+INSERT INTO mat_tag (tag_name, tag_type) VALUES
+    ('发音示范', 'SYSTEM'),
+    ('课文朗读', 'SYSTEM'),
+    ('口语技巧', 'SYSTEM'),
+    ('语法讲解', 'SYSTEM'),
+    ('词汇学习', 'SYSTEM');
+
 INSERT INTO sys_role (role_code, role_name, description) VALUES
     ('STUDENT', '学生', '学生角色，可跟读打卡、查看成绩和排行'),
     ('TEACHER', '老师', '老师角色，可下发任务、管理本班学生、查看班级成绩'),

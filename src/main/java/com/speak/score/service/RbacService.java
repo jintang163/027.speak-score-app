@@ -51,7 +51,8 @@ public class RbacService {
         String[] permissions = {
                 "task:view", "task:submit", "recording:create", "recording:view_own",
                 "score:view_own", "ranking:view_class", "ranking:view_school",
-                "profile:view", "profile:update", "class:join"
+                "profile:view", "profile:update", "class:join",
+                "material:view", "material:search", "material:preview"
         };
         assignPermissionsToRole(studentRole, permissions);
     }
@@ -66,6 +67,8 @@ public class RbacService {
                 "student:view_class", "student:manage", "student:import",
                 "class:view", "class:manage_members",
                 "profile:view", "profile:update",
+                "material:upload", "material:view", "material:search", "material:preview",
+                "material:manage_own", "material:tag_create",
                 "video:upload", "video:manage", "message:send"
         };
         assignPermissionsToRole(teacherRole, permissions);
@@ -84,6 +87,8 @@ public class RbacService {
                 "grade:view", "grade:create", "grade:update",
                 "school:view", "school:create", "school:update",
                 "profile:view", "profile:update",
+                "material:upload", "material:view", "material:search", "material:preview",
+                "material:manage_all", "material:review", "material:tag_create",
                 "video:upload", "video:manage", "video:approve",
                 "message:send", "message:manage",
                 "permission:manage"

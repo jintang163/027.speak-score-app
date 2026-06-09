@@ -14,6 +14,7 @@ import 'package:speak_score_flutter/screens/teacher/teacher_profile_screen.dart'
 import 'package:speak_score_flutter/screens/edu_office/edu_office_school_screen.dart';
 import 'package:speak_score_flutter/screens/edu_office/edu_office_ranking_screen.dart';
 import 'package:speak_score_flutter/screens/edu_office/edu_office_profile_screen.dart';
+import 'package:speak_score_flutter/screens/material/material_list_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -70,6 +71,10 @@ class _HomeScreenState extends State<HomeScreen> {
             label: '学生',
           ),
           BottomNavigationBarItem(
+            icon: Icon(Icons.video_library),
+            label: '资料',
+          ),
+          BottomNavigationBarItem(
             icon: Icon(Icons.leaderboard),
             label: '排行',
           ),
@@ -83,6 +88,10 @@ class _HomeScreenState extends State<HomeScreen> {
           BottomNavigationBarItem(
             icon: Icon(Icons.school),
             label: '学校',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.video_library),
+            label: '资料',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.leaderboard),
@@ -104,6 +113,10 @@ class _HomeScreenState extends State<HomeScreen> {
             label: '录音',
           ),
           BottomNavigationBarItem(
+            icon: Icon(Icons.video_library),
+            label: '资料',
+          ),
+          BottomNavigationBarItem(
             icon: Icon(Icons.leaderboard),
             label: '排行',
           ),
@@ -121,12 +134,14 @@ class _HomeScreenState extends State<HomeScreen> {
         return const [
           TeacherTaskScreen(),
           TeacherStudentsScreen(),
+          MaterialListScreen(),
           TeacherRankingScreen(),
           TeacherProfileScreen(),
         ];
       case 'EDU_OFFICE':
         return const [
           EduOfficeSchoolScreen(),
+          MaterialListScreen(),
           EduOfficeRankingScreen(),
           EduOfficeProfileScreen(),
         ];
@@ -134,6 +149,7 @@ class _HomeScreenState extends State<HomeScreen> {
         return const [
           StudentTaskScreen(),
           StudentRecordScreen(),
+          MaterialListScreen(),
           StudentRankingScreen(),
           StudentProfileScreen(),
         ];

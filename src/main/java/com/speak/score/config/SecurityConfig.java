@@ -51,6 +51,9 @@ public class SecurityConfig {
                     .antMatchers("/edu-office/**").hasRole("EDU_OFFICE")
                     .antMatchers("/teacher/**").hasAnyRole("TEACHER", "EDU_OFFICE")
                     .antMatchers("/student/**").hasRole("STUDENT")
+                    .antMatchers("/materials/upload").hasAnyRole("TEACHER", "EDU_OFFICE")
+                    .antMatchers("/materials/*/review").hasRole("EDU_OFFICE")
+                    .antMatchers("/materials/pending-review").hasRole("EDU_OFFICE")
                     .antMatchers("/admin/**").hasRole("EDU_OFFICE")
                     .anyRequest().authenticated().and()
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);

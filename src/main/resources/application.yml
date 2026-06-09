@@ -43,8 +43,8 @@ spring:
 
   servlet:
     multipart:
-      max-file-size: 100MB
-      max-request-size: 100MB
+      max-file-size: 500MB
+      max-request-size: 500MB
 
 jwt:
   secret: ${JWT_SECRET:SpeakScoreApp2024SecretKeyForJwtTokenGenerationMustBeLongEnough}
@@ -63,6 +63,27 @@ sms:
   access-secret: ${SMS_ACCESS_SECRET:}
   sign-name: ${SMS_SIGN_NAME:}
   template-code: ${SMS_TEMPLATE_CODE:}
+
+oss:
+  endpoint: ${OSS_ENDPOINT:oss-cn-hangzhou.aliyuncs.com}
+  access-key-id: ${OSS_ACCESS_KEY_ID:}
+  access-key-secret: ${OSS_ACCESS_KEY_SECRET:}
+  bucket-name: ${OSS_BUCKET_NAME:speak-score}
+  custom-domain: ${OSS_CUSTOM_DOMAIN:}
+
+vod:
+  region-id: ${VOD_REGION_ID:cn-hangzhou}
+  access-key-id: ${VOD_ACCESS_KEY_ID:}
+  access-key-secret: ${VOD_ACCESS_KEY_SECRET:}
+  template-group-id: ${VOD_TEMPLATE_GROUP_ID:}
+  storage-location: ${VOD_STORAGE_LOCATION:}
+
+content-review:
+  enabled: ${CONTENT_REVIEW_ENABLED:false}
+  provider: ${CONTENT_REVIEW_PROVIDER:aliyun}
+  access-key-id: ${CONTENT_REVIEW_ACCESS_KEY_ID:}
+  access-key-secret: ${CONTENT_REVIEW_ACCESS_KEY_SECRET:}
+  endpoint: ${CONTENT_REVIEW_ENDPOINT:}
 
 logging:
   level:
