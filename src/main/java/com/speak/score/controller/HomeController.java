@@ -4,6 +4,7 @@ import com.speak.score.dto.ApiResponse;
 import com.speak.score.dto.HomeMenuDTO;
 import com.speak.score.entity.RoleEnum;
 import com.speak.score.entity.User;
+import com.speak.score.exception.BusinessException;
 import com.speak.score.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
@@ -24,7 +25,8 @@ public class HomeController {
     @GetMapping("/menus")
     public ApiResponse<HomeMenuDTO> getHomeMenus(Authentication authentication) {
         Long userId = (Long) authentication.getPrincipal();
-        User user = userRepository.findById(userId).orElseThrow();
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new BusinessException("User not found"));
 
         RoleEnum primaryRole = user.getRoles().stream()
                 .map(r -> r.getRoleCode())

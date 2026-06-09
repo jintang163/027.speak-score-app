@@ -5,6 +5,7 @@ import com.speak.score.entity.*;
 import com.speak.score.exception.BusinessException;
 import com.speak.score.repository.ClassMemberRepository;
 import com.speak.score.repository.ClassRepository;
+import com.speak.score.repository.RoleRepository;
 import com.speak.score.repository.SchoolMemberRepository;
 import com.speak.score.repository.UserRepository;
 import lombok.RequiredArgsConstructor;

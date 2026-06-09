@@ -10,6 +10,7 @@ import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
@@ -59,7 +60,7 @@ public class RbacPermissionService {
     }
 
     public void evictAllPermissionCache() {
-        var keys = redisTemplate.keys(PERMISSION_CACHE_PREFIX + "*");
+        Set<String> keys = redisTemplate.keys(PERMISSION_CACHE_PREFIX + "*");
         if (keys != null && !keys.isEmpty()) {
             redisTemplate.delete(keys);
             log.debug("Evicted all permission cache");

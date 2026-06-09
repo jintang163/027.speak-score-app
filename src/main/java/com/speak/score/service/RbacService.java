@@ -46,7 +46,8 @@ public class RbacService {
     }
 
     private void initStudentPermissions() {
-        Role studentRole = roleRepository.findByRoleCode(RoleEnum.STUDENT).orElseThrow();
+        Role studentRole = roleRepository.findByRoleCode(RoleEnum.STUDENT)
+                .orElseThrow(() -> new BusinessException("Student role not found"));
         String[] permissions = {
                 "task:view", "task:submit", "recording:create", "recording:view_own",
                 "score:view_own", "ranking:view_class", "ranking:view_school",
@@ -56,7 +57,8 @@ public class RbacService {
     }
 
     private void initTeacherPermissions() {
-        Role teacherRole = roleRepository.findByRoleCode(RoleEnum.TEACHER).orElseThrow();
+        Role teacherRole = roleRepository.findByRoleCode(RoleEnum.TEACHER)
+                .orElseThrow(() -> new BusinessException("Teacher role not found"));
         String[] permissions = {
                 "task:view", "task:create", "task:update", "task:delete", "task:publish",
                 "recording:view_class", "recording:review", "score:view_class",
@@ -70,7 +72,8 @@ public class RbacService {
     }
 
     private void initEduOfficePermissions() {
-        Role eduOfficeRole = roleRepository.findByRoleCode(RoleEnum.EDU_OFFICE).orElseThrow();
+        Role eduOfficeRole = roleRepository.findByRoleCode(RoleEnum.EDU_OFFICE)
+                .orElseThrow(() -> new BusinessException("EduOffice role not found"));
         String[] permissions = {
                 "task:view", "task:create", "task:update", "task:delete", "task:publish",
                 "recording:view_all", "recording:review", "score:view_all",

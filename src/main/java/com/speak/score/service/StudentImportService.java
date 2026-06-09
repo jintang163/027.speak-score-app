@@ -63,27 +63,28 @@ public class StudentImportService {
     private void importSingleStudent(StudentExcelDTO dto, ClassEntity classEntity,
                                      Role studentRole, List<String> results) {
         if (dto.getPhone() != null && userRepository.existsByPhone(dto.getPhone())) {
-            User existingUser = userRepository.findByPhone(dto.getPhone()).orElseThrow();
-            classMemberRepository.findByClassIdAndUserId(classEntity.getId(), existingUser.getId())
-                    .ifPresentOrElse(
-                            m -> results.add("SKIPPED: " + dto.getRealName() + " - already in class"),
-                            () -> {
-                                ClassMember member = new ClassMember();
-                                member.setUser(existingUser);
-                                member.setClassEntity(classEntity);
-                                member.setRoleCode(RoleEnum.STUDENT);
-                                member.setJoinType("IMPORT");
-                                member.setStatus(1);
-                                classMemberRepository.save(member);
+            User existingUser = userRepository.findByPhone(dto.getPhone())
+                    .orElseThrow(() -> new BusinessException("User not found"));
+            java.util.Optional<ClassMember> existingMember =
+                    classMemberRepository.findByClassIdAndUserId(classEntity.getId(), existingUser.getId());
+            if (existingMember.isPresent()) {
+                results.add("SKIPPED: " + dto.getRealName() + " - already in class");
+            } else {
+                ClassMember member = new ClassMember();
+                member.setUser(existingUser);
+                member.setClassEntity(classEntity);
+                member.setRoleCode(RoleEnum.STUDENT);
+                member.setJoinType("IMPORT");
+                member.setStatus(1);
+                classMemberRepository.save(member);
 
-                                existingUser.setClassEntity(classEntity);
-                                if (existingUser.getSchool() == null) {
-                                    existingUser.setSchool(classEntity.getSchool());
-                                }
-                                userRepository.save(existingUser);
-                                results.add("ADDED: " + dto.getRealName());
-                            }
-                    );
+                existingUser.setClassEntity(classEntity);
+                if (existingUser.getSchool() == null) {
+                    existingUser.setSchool(classEntity.getSchool());
+                }
+                userRepository.save(existingUser);
+                results.add("ADDED: " + dto.getRealName());
+            }
             return;
         }
 

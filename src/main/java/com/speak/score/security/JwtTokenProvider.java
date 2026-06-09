@@ -64,6 +64,20 @@ public class JwtTokenProvider {
         return claims.get("roles", List.class);
     }
 
+    public Date getExpirationFromToken(String token) {
+        Claims claims = parseToken(token);
+        return claims.getExpiration();
+    }
+
+    public boolean isRefreshToken(String token) {
+        try {
+            Claims claims = parseToken(token);
+            return "refresh".equals(claims.get("type", String.class));
+        } catch (JwtException | IllegalArgumentException e) {
+            return false;
+        }
+    }
+
     public boolean validateToken(String token) {
         try {
             parseToken(token);

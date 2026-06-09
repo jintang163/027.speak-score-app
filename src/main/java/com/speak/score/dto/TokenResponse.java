@@ -13,4 +13,5 @@ public class TokenResponse {
     private String refreshToken;
     private Long expiresIn;
     private UserInfoDTO userInfo;
+    private Boolean isNewUser;
 }

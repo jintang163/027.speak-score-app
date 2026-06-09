@@ -4,6 +4,8 @@ import com.speak.score.dto.*;
 import com.speak.score.service.AuthService;
 import javax.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -35,6 +37,23 @@ public class AuthController {
     public ApiResponse<TokenResponse> register(@Valid @RequestBody RegisterRequest request) {
         TokenResponse response = authService.register(request);
         return ApiResponse.success(response);
+    }
+
+    @PostMapping("/wechat-register")
+    public ApiResponse<TokenResponse> wechatRegister(@Valid @RequestBody WechatRegisterRequest request) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        Long userId = (Long) authentication.getPrincipal();
+        TokenResponse response = authService.wechatRegister(userId, request);
+        return ApiResponse.success(response);
+    }
+
+    @PostMapping("/logout")
+    public ApiResponse<Void> logout(@RequestHeader("Authorization") String authorization) {
+        if (authorization != null && authorization.startsWith("Bearer ")) {
+            String accessToken = authorization.substring(7);
+            authService.logout(accessToken);
+        }
+        return ApiResponse.success();
     }
 
     @PostMapping("/refresh")

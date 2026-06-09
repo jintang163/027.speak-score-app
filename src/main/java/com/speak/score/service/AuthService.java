@@ -1,10 +1,12 @@
 package com.speak.score.service;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.speak.score.config.WeChatConfig;
 import com.speak.score.dto.*;
 import com.speak.score.entity.*;
 import com.speak.score.exception.BusinessException;
 import com.speak.score.repository.ClassRepository;
+import com.speak.score.repository.RoleRepository;
 import com.speak.score.repository.SmsCodeRepository;
 import com.speak.score.repository.UserRepository;
 import com.speak.score.security.JwtTokenProvider;
@@ -16,6 +18,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
 
+import java.util.Date;
 import java.util.List;
 import java.util.Random;
 import java.util.concurrent.TimeUnit;
@@ -28,6 +31,8 @@ public class AuthService {
 
     private static final String SMS_RATE_LIMIT_PREFIX = "sms:rate:";
     private static final String SMS_CODE_CACHE_PREFIX = "sms:code:";
+    private static final String TOKEN_BLACKLIST_PREFIX = "token:blacklist:";
+    private static final String WECHAT_SESSION_PREFIX = "wechat:session:";
     private static final long SMS_CODE_TTL_MINUTES = 5;
     private static final long SMS_RATE_LIMIT_SECONDS = 60;
 
@@ -35,6 +40,7 @@ public class AuthService {
     private final SmsCodeRepository smsCodeRepository;
     private final UserService userService;
     private final ClassRepository classRepository;
+    private final RoleRepository roleRepository;
     private final JwtTokenProvider jwtTokenProvider;
     private final RedisTemplate<String, Object> redisTemplate;
     private final WeChatConfig weChatConfig;
@@ -76,7 +82,7 @@ public class AuthService {
             throw new BusinessException("Account is disabled");
         }
 
-        return buildTokenResponse(user);
+        return buildTokenResponse(user, false);
     }
 
     @Transactional
@@ -86,14 +92,83 @@ public class AuthService {
             throw new BusinessException("WeChat login failed");
         }
 
-        User user = userRepository.findByWechatOpenid(session.getOpenid())
-                .orElseThrow(() -> new BusinessException("User not found, please register first"));
+        if (session.getErrcode() != null && session.getErrcode() != 0) {
+            throw new BusinessException("WeChat login failed: " + session.getErrmsg());
+        }
 
-        if (!user.getEnabled()) {
+        boolean isNewUser = false;
+        User user = userRepository.findByWechatOpenid(session.getOpenid())
+                .orElse(null);
+
+        if (user == null) {
+            user = userService.createUserWithWechat(
+                    session.getOpenid(), session.getUnionid(), "微信用户", null);
+            isNewUser = true;
+        } else if (!user.getEnabled()) {
             throw new BusinessException("Account is disabled");
         }
 
-        return buildTokenResponse(user);
+        if (session.getSessionKey() != null) {
+            redisTemplate.opsForValue().set(
+                    WECHAT_SESSION_PREFIX + session.getOpenid(),
+                    session.getSessionKey(), 30, TimeUnit.MINUTES);
+        }
+
+        return buildTokenResponse(user, isNewUser);
+    }
+
+    @Transactional
+    public TokenResponse wechatRegister(Long userId, WechatRegisterRequest request) {
+        validateSmsCode(request.getPhone(), request.getSmsCode());
+
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new BusinessException("User not found"));
+
+        if (request.getWechatCode() != null && !request.getWechatCode().trim().isEmpty()) {
+            WechatSessionResult session = code2Session(request.getWechatCode());
+            if (session == null || !user.getWechatOpenid().equals(session.getOpenid())) {
+                throw new BusinessException("WeChat verification failed");
+            }
+        }
+
+        if (userRepository.existsByPhone(request.getPhone())) {
+            throw new BusinessException("Phone number already registered");
+        }
+
+        user.setPhone(request.getPhone());
+        if (request.getNickname() != null && !request.getNickname().trim().isEmpty()) {
+            user.setNickname(request.getNickname());
+        }
+
+        RoleEnum roleCode = RoleEnum.valueOf(request.getRoleCode());
+        Role role = roleRepository.findByRoleCode(roleCode)
+                .orElseThrow(() -> new BusinessException("Role not found: " + roleCode));
+        user.addRole(role);
+
+        if (request.getSchoolId() != null) {
+            userService.assignToSchool(user.getId(), request.getSchoolId(), roleCode);
+        }
+
+        if (request.getClassCode() != null && !request.getClassCode().trim().isEmpty()) {
+            ClassEntity classEntity = classRepository.findByClassCode(request.getClassCode())
+                    .orElseThrow(() -> new BusinessException("Class code not found"));
+
+            user.setClassEntity(classEntity);
+            user.setSchool(classEntity.getSchool());
+
+            ClassMember member = new ClassMember();
+            member.setUser(user);
+            member.setClassEntity(classEntity);
+            member.setRoleCode(roleCode);
+            member.setJoinType("CODE");
+            member.setStatus(roleCode == RoleEnum.STUDENT ? 0 : 1);
+        } else if (request.getClassId() != null) {
+            userService.assignToClass(user.getId(), request.getClassId(), roleCode, "SELECT");
+        }
+
+        userRepository.save(user);
+
+        return buildTokenResponse(user, false);
     }
 
     @Transactional
@@ -113,7 +188,7 @@ public class AuthService {
             userService.assignToSchool(user.getId(), request.getSchoolId(), roleCode);
         }
 
-        if (request.getClassCode() != null && !request.getClassCode().isBlank()) {
+        if (request.getClassCode() != null && !request.getClassCode().trim().isEmpty()) {
             ClassEntity classEntity = classRepository.findByClassCode(request.getClassCode())
                     .orElseThrow(() -> new BusinessException("Class code not found"));
 
@@ -130,7 +205,22 @@ public class AuthService {
             userService.assignToClass(user.getId(), request.getClassId(), roleCode, "SELECT");
         }
 
-        return buildTokenResponse(userRepository.save(user));
+        return buildTokenResponse(userRepository.save(user), true);
+    }
+
+    public void logout(String accessToken) {
+        Date expiration = jwtTokenProvider.getExpirationFromToken(accessToken);
+        long remainingSeconds = (expiration.getTime() - System.currentTimeMillis()) / 1000;
+
+        if (remainingSeconds > 0) {
+            redisTemplate.opsForValue().set(
+                    TOKEN_BLACKLIST_PREFIX + accessToken,
+                    "1", remainingSeconds, TimeUnit.SECONDS);
+        }
+    }
+
+    public boolean isTokenBlacklisted(String token) {
+        return Boolean.TRUE.equals(redisTemplate.hasKey(TOKEN_BLACKLIST_PREFIX + token));
     }
 
     public TokenResponse refreshToken(String refreshToken) {
@@ -138,11 +228,19 @@ public class AuthService {
             throw new BusinessException(401, "Invalid refresh token");
         }
 
+        if (!jwtTokenProvider.isRefreshToken(refreshToken)) {
+            throw new BusinessException(401, "Not a refresh token");
+        }
+
         Long userId = jwtTokenProvider.getUserIdFromToken(refreshToken);
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new BusinessException("User not found"));
 
-        return buildTokenResponse(user);
+        if (!user.getEnabled()) {
+            throw new BusinessException("Account is disabled");
+        }
+
+        return buildTokenResponse(user, false);
     }
 
     private void validateSmsCode(String phone, String code) {
@@ -156,7 +254,7 @@ public class AuthService {
         redisTemplate.delete(cacheKey);
     }
 
-    private TokenResponse buildTokenResponse(User user) {
+    private TokenResponse buildTokenResponse(User user, boolean isNewUser) {
         List<String> roles = user.getRoles().stream()
                 .map(role -> role.getRoleCode().name())
                 .collect(Collectors.toList());
@@ -166,7 +264,7 @@ public class AuthService {
 
         UserInfoDTO userInfo = userService.getUserInfo(user.getId());
 
-        return new TokenResponse(accessToken, refreshToken, accessTokenExpiration, userInfo);
+        return new TokenResponse(accessToken, refreshToken, accessTokenExpiration, userInfo, isNewUser);
     }
 
     private String generateSmsCode() {
@@ -189,6 +287,7 @@ public class AuthService {
     @lombok.Data
     private static class WechatSessionResult {
         private String openid;
+        @JsonProperty("session_key")
         private String sessionKey;
         private String unionid;
         private Integer errcode;
