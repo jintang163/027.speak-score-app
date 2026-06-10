@@ -65,4 +65,21 @@ public class RocketMQProducerService {
             log.error("Failed to send wechat message: taskId={}", taskId, e);
         }
     }
+
+    public void sendScoringMessage(Long itemId, Long taskId, Long userId, String audioUrl, String referenceText) {
+        String destination = rocketMQConfig.getTodoTaskTopic() + ":" + rocketMQConfig.getScoringTag();
+        Map<String, Object> message = new HashMap<>();
+        message.put("itemId", itemId);
+        message.put("taskId", taskId);
+        message.put("userId", userId);
+        message.put("audioUrl", audioUrl);
+        message.put("referenceText", referenceText);
+        message.put("timestamp", System.currentTimeMillis());
+        try {
+            rocketMQTemplate.convertAndSend(destination, message);
+            log.info("Sent scoring message: itemId={}, taskId={}, userId={}", itemId, taskId, userId);
+        } catch (Exception e) {
+            log.error("Failed to send scoring message: itemId={}, taskId={}", itemId, taskId, e);
+        }
+    }
 }

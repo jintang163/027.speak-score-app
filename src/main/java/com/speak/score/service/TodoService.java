@@ -17,6 +17,8 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import org.springframework.web.multipart.MultipartFile;
+
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -33,6 +35,7 @@ public class TodoService {
     private final ClassMemberRepository classMemberRepository;
     private final MaterialRepository materialRepository;
     private final NotificationService notificationService;
+    private final OssService ossService;
 
     @Autowired(required = false)
     private RocketMQProducerService rocketMQProducerService;
@@ -140,6 +143,41 @@ public class TodoService {
         }
         TodoTask savedTask = todoTaskRepository.save(task);
         return enrichTaskDTO(savedTask);
+    }
+
+    @Transactional
+    public TodoItemDTO submitCheckin(Long taskId, Long userId, MultipartFile audioFile, Integer duration) {
+        TodoItem item = todoItemRepository.findByTaskIdAndUserIdAndStatusAndDeletedFalse(taskId, userId, TodoItemStatus.PENDING)
+                .orElseThrow(() -> new BusinessException("待完成的打卡项不存在"));
+
+        String audioUrl = ossService.uploadFile(audioFile, "checkin-audio");
+
+        item.setAudioUrl(audioUrl);
+        item.setDuration(duration);
+        item.setStatus(TodoItemStatus.PENDING_SCORE);
+        item.setCompletedAt(LocalDateTime.now());
+        TodoItem savedItem = todoItemRepository.save(item);
+
+        TodoTask task = todoTaskRepository.findById(taskId)
+                .orElseThrow(() -> new BusinessException("Task not found"));
+
+        try {
+            if (rocketMQProducerService != null) {
+                rocketMQProducerService.sendScoringMessage(
+                        savedItem.getId(), taskId, userId, audioUrl, task.getReferenceText());
+            }
+        } catch (Exception e) {
+            log.error("Failed to send scoring message for item: {}", savedItem.getId(), e);
+        }
+
+        notificationService.sendNotification(
+                userId, task.getCreatorId(),
+                "学生已提交打卡：" + task.getTitle(),
+                null,
+                MsgType.TODO, taskId, "TODO_TASK"
+        );
+
+        return TodoItemDTO.fromEntity(savedItem);
     }
 
     @Transactional

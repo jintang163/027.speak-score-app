@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:speak_score_flutter/models/todo_info.dart';
+import 'package:speak_score_flutter/screens/todo/checkin_screen.dart';
 import 'package:speak_score_flutter/services/auth_service.dart';
 import 'package:speak_score_flutter/services/todo_service.dart';
 
@@ -141,6 +142,21 @@ class _TodoDetailScreenState extends State<TodoDetailScreen> {
         setState(() => _isUrging = false);
         _showError('催办失败');
       }
+    }
+  }
+
+  Future<void> _navigateToCheckin() async {
+    final result = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (_) => CheckinScreen(
+          taskId: widget.todoId,
+          referenceText: _todo?.referenceText,
+          materialTitle: _todo?.materialTitle,
+        ),
+      ),
+    );
+    if (result == true && mounted) {
+      _loadDetail();
     }
   }
 
@@ -386,51 +402,71 @@ class _TodoDetailScreenState extends State<TodoDetailScreen> {
     final canUrge = _isCreator &&
         _todo?.status != 'COMPLETED' &&
         _todo?.status != 'CANCELLED';
+    final canCheckin = _isAssignee &&
+        _todo?.status == 'PENDING' &&
+        (_todo?.taskType == 'FOLLOW_READ' || _todo?.taskType == 'READ_ALOUD');
 
-    if (!canComplete && !canUrge) return const SizedBox.shrink();
+    if (!canComplete && !canUrge && !canCheckin) return const SizedBox.shrink();
 
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
-        child: Row(
+        child: Column(
           children: [
-            if (canComplete)
-              Expanded(
+            if (canCheckin)
+              SizedBox(
+                width: double.infinity,
                 child: FilledButton.icon(
-                  onPressed: _isCompleting ? null : _completeTodo,
-                  icon: _isCompleting
-                      ? const SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(
-                              strokeWidth: 2, color: Colors.white),
-                        )
-                      : const Icon(Icons.check),
-                  label: const Text('完成'),
+                  onPressed: _navigateToCheckin,
+                  icon: const Icon(Icons.mic),
+                  label: const Text('开始打卡'),
                   style:
                       FilledButton.styleFrom(backgroundColor: Colors.green),
                 ),
               ),
-            if (canComplete && canUrge) const SizedBox(width: 12),
-            if (canUrge)
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: _isUrging ? null : _urgeTodo,
-                  icon: _isUrging
-                      ? const SizedBox(
-                          width: 16,
-                          height: 16,
-                          child:
-                              CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.notifications_active,
-                          color: Colors.orange),
-                  label: const Text('催办',
-                      style: TextStyle(color: Colors.orange)),
-                  style: OutlinedButton.styleFrom(
-                      side: const BorderSide(color: Colors.orange)),
-                ),
-              ),
+            if (canCheckin && (canComplete || canUrge))
+              const SizedBox(height: 12),
+            Row(
+              children: [
+                if (canComplete)
+                  Expanded(
+                    child: FilledButton.icon(
+                      onPressed: _isCompleting ? null : _completeTodo,
+                      icon: _isCompleting
+                          ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(
+                                  strokeWidth: 2, color: Colors.white),
+                            )
+                          : const Icon(Icons.check),
+                      label: const Text('完成'),
+                      style:
+                          FilledButton.styleFrom(backgroundColor: Colors.green),
+                    ),
+                  ),
+                if (canComplete && canUrge) const SizedBox(width: 12),
+                if (canUrge)
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: _isUrging ? null : _urgeTodo,
+                      icon: _isUrging
+                          ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child:
+                                  CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(Icons.notifications_active,
+                              color: Colors.orange),
+                      label: const Text('催办',
+                          style: TextStyle(color: Colors.orange)),
+                      style: OutlinedButton.styleFrom(
+                          side: const BorderSide(color: Colors.orange)),
+                    ),
+                  ),
+              ],
+            ),
           ],
         ),
       ),

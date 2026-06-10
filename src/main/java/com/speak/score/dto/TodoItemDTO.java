@@ -19,6 +19,8 @@ public class TodoItemDTO {
     private String status;
     private String feedback;
     private Double score;
+    private String audioUrl;
+    private Integer duration;
     private String completedAt;
     private String createdAt;
 
@@ -36,6 +38,8 @@ public class TodoItemDTO {
         dto.setStatus(item.getStatus() != null ? item.getStatus().name() : null);
         dto.setFeedback(item.getFeedback());
         dto.setScore(item.getScore());
+        dto.setAudioUrl(item.getAudioUrl());
+        dto.setDuration(item.getDuration());
         dto.setCompletedAt(item.getCompletedAt() != null ? item.getCompletedAt().format(FORMATTER) : null);
         dto.setCreatedAt(item.getCreatedAt() != null ? item.getCreatedAt().format(FORMATTER) : null);
         return dto;

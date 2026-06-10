@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:speak_score_flutter/models/todo_info.dart';
+import 'package:speak_score_flutter/services/todo_service.dart';
 
 class StudentRecordScreen extends StatefulWidget {
   const StudentRecordScreen({super.key});
@@ -8,7 +10,8 @@ class StudentRecordScreen extends StatefulWidget {
 }
 
 class _StudentRecordScreenState extends State<StudentRecordScreen> {
-  List<Map<String, dynamic>> _records = [];
+  final _todoService = TodoService();
+  List<TodoTask> _completedTasks = [];
   bool _isLoading = false;
 
   @override
@@ -19,19 +22,60 @@ class _StudentRecordScreenState extends State<StudentRecordScreen> {
 
   Future<void> _loadRecords() async {
     setState(() => _isLoading = true);
-    await Future.delayed(const Duration(milliseconds: 500));
-    if (mounted) {
-      setState(() {
-        _records = [];
-        _isLoading = false;
-      });
+    try {
+      final tasks = await _todoService.getMyTodos(status: 'COMPLETED');
+      final pendingScoreTasks = await _todoService.getMyTodos(status: 'PENDING_SCORE');
+      if (mounted) {
+        setState(() {
+          _completedTasks = [...pendingScoreTasks, ...tasks];
+          _isLoading = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
-  String _formatDuration(int seconds) {
+  String _formatDuration(int? seconds) {
+    if (seconds == null) return '--';
     final m = seconds ~/ 60;
     final s = seconds % 60;
     return '${m}分${s}秒';
+  }
+
+  String _formatDate(String? dateStr) {
+    if (dateStr == null) return '';
+    final dt = DateTime.tryParse(dateStr);
+    if (dt == null) return dateStr;
+    return '${dt.month}/${dt.day} ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+  }
+
+  Color _statusColor(String? status) {
+    switch (status) {
+      case 'COMPLETED':
+        return Colors.green;
+      case 'PENDING_SCORE':
+        return Colors.orange;
+      case 'REJECTED':
+        return Colors.red;
+      default:
+        return Colors.grey;
+    }
+  }
+
+  String _statusLabel(String? status) {
+    switch (status) {
+      case 'COMPLETED':
+        return '已评分';
+      case 'PENDING_SCORE':
+        return '待评分';
+      case 'REJECTED':
+        return '已退回';
+      default:
+        return '未知';
+    }
   }
 
   @override
@@ -40,7 +84,7 @@ class _StudentRecordScreenState extends State<StudentRecordScreen> {
       return const Center(child: CircularProgressIndicator());
     }
 
-    if (_records.isEmpty) {
+    if (_completedTasks.isEmpty) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -65,50 +109,71 @@ class _StudentRecordScreenState extends State<StudentRecordScreen> {
       onRefresh: _loadRecords,
       child: ListView.builder(
         padding: const EdgeInsets.all(16),
-        itemCount: _records.length,
+        itemCount: _completedTasks.length,
         itemBuilder: (context, index) {
-          final record = _records[index];
+          final task = _completedTasks[index];
           return Card(
             margin: const EdgeInsets.only(bottom: 12),
-            child: ListTile(
-              leading: CircleAvatar(
-                backgroundColor: Colors.blue.withValues(alpha: 0.1),
-                child: const Icon(Icons.mic, color: Colors.blue),
-              ),
-              title: Text(
-                record['taskName'] ?? '',
-                style: const TextStyle(fontWeight: FontWeight.w600),
-              ),
-              subtitle: Column(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      Icon(task.taskTypeIcon, size: 20, color: Colors.blue),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          task.title ?? '',
+                          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: _statusColor(task.status).withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          _statusLabel(task.status),
+                          style: TextStyle(
+                            color: _statusColor(task.status),
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
                   Row(
                     children: [
                       Icon(Icons.timer, size: 14, color: Colors.grey[500]),
                       const SizedBox(width: 4),
                       Text(
-                        _formatDuration(record['duration'] ?? 0),
+                        _formatDuration(null),
                         style: TextStyle(color: Colors.grey[500], fontSize: 13),
                       ),
                       const SizedBox(width: 16),
                       Icon(Icons.star, size: 14, color: Colors.amber[700]),
                       const SizedBox(width: 4),
                       Text(
-                        record['score']?.toString() ?? '--',
+                        task.averageScore?.toStringAsFixed(1) ?? '--',
                         style: TextStyle(
                           color: Colors.amber[700],
                           fontSize: 13,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
+                      const Spacer(),
+                      Text(
+                        _formatDate(task.completedAt),
+                        style: TextStyle(color: Colors.grey[400], fontSize: 12),
+                      ),
                     ],
                   ),
                 ],
-              ),
-              trailing: Text(
-                record['date'] ?? '',
-                style: TextStyle(color: Colors.grey[400], fontSize: 12),
               ),
             ),
           );

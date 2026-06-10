@@ -34,6 +34,12 @@ public class TodoItem extends BaseEntity {
     @Column(name = "score")
     private Double score;
 
+    @Column(name = "audio_url", length = 500)
+    private String audioUrl;
+
+    @Column(name = "duration")
+    private Integer duration;
+
     @Column(name = "completed_at")
     private LocalDateTime completedAt;
 }

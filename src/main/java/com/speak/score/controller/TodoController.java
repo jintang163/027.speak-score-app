@@ -7,6 +7,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import javax.validation.Valid;
 import java.util.List;
@@ -62,6 +63,16 @@ public class TodoController {
             Authentication auth) {
         Long userId = (Long) auth.getPrincipal();
         return ApiResponse.success(todoService.completeTodoItem(taskId, userId, request));
+    }
+
+    @PostMapping("/{id}/checkin")
+    public ApiResponse<TodoItemDTO> checkin(
+            @PathVariable("id") Long taskId,
+            @RequestParam("audioFile") MultipartFile audioFile,
+            @RequestParam(value = "duration", required = false) Integer duration,
+            Authentication auth) {
+        Long userId = (Long) auth.getPrincipal();
+        return ApiResponse.success(todoService.submitCheckin(taskId, userId, audioFile, duration));
     }
 
     @GetMapping("/my")

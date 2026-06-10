@@ -15,4 +15,5 @@ public class RocketMQConfig {
     private String todoTaskTag = "todo-task";
     private String pushTag = "push";
     private String wechatTag = "wechat";
+    private String scoringTag = "scoring";
 }

@@ -175,4 +175,19 @@ class TodoService {
       return false;
     }
   }
+
+  Future<bool> submitCheckin(
+      int taskId, String audioFilePath, int durationInSeconds) async {
+    try {
+      await _apiClient.upload(
+        '/todos/$taskId/checkin',
+        filePath: audioFilePath,
+        fileName: 'recording.aac',
+        extraFields: {'duration': durationInSeconds},
+      );
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
 }

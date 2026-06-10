@@ -34,4 +34,8 @@ public interface TodoItemRepository extends JpaRepository<TodoItem, Long> {
 
     @Query("SELECT ti.taskId FROM TodoItem ti WHERE ti.userId = :userId AND ti.status = :status AND ti.deleted = false")
     Page<Long> findTaskIdsByUserIdAndStatusAndDeletedFalse(@Param("userId") Long userId, @Param("status") TodoItemStatus status, Pageable pageable);
+
+    Optional<TodoItem> findByTaskIdAndUserIdAndStatusAndDeletedFalse(Long taskId, Long userId, TodoItemStatus status);
+
+    List<TodoItem> findByUserIdAndDeletedFalseOrderByCompletedAtDesc(Long userId);
 }

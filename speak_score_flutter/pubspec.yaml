@@ -21,6 +21,12 @@ dependencies:
   file_picker: ^6.1.1
   image_picker: ^1.0.7
   getuiflut: ^0.3.4
+  record: ^5.0.5
+  audioplayers: ^5.2.1
+  audio_waveforms: ^1.0.5
+  permission_handler: ^11.2.0
+  path_provider: ^2.1.2
+  connectivity_plus: ^5.0.2
 
 dev_dependencies:
   flutter_test:

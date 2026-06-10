@@ -230,6 +230,8 @@ class TodoItem {
   final String? status;
   final String? feedback;
   final double? score;
+  final String? audioUrl;
+  final int? duration;
   final String? completedAt;
   final String? createdAt;
 
@@ -241,6 +243,8 @@ class TodoItem {
     this.status,
     this.feedback,
     this.score,
+    this.audioUrl,
+    this.duration,
     this.completedAt,
     this.createdAt,
   });
@@ -254,6 +258,8 @@ class TodoItem {
       status: json['status'] as String?,
       feedback: json['feedback'] as String?,
       score: (json['score'] as num?)?.toDouble(),
+      audioUrl: json['audioUrl'] as String?,
+      duration: json['duration'] as int?,
       completedAt: json['completedAt'] as String?,
       createdAt: json['createdAt'] as String?,
     );
@@ -267,6 +273,8 @@ class TodoItem {
         'status': status,
         'feedback': feedback,
         'score': score,
+        'audioUrl': audioUrl,
+        'duration': duration,
         'completedAt': completedAt,
         'createdAt': createdAt,
       };
