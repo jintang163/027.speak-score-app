@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:record/record.dart';
 import 'package:speak_score_flutter/services/audio_recorder_service.dart';
+import 'package:speak_score_flutter/services/offline_sync_service.dart';
 import 'package:speak_score_flutter/services/todo_service.dart';
 
 enum CheckinState { idle, recording, recorded, playing, uploading }
@@ -175,13 +176,39 @@ class _CheckinScreenState extends State<CheckinScreen> {
           ),
         );
       } else {
-        setState(() => _state = CheckinState.recorded);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-              content: Text('提交失败，请重试'), backgroundColor: Colors.red),
-        );
+        await _enqueueOffline();
       }
     } catch (_) {
+      if (mounted) {
+        await _enqueueOffline();
+      }
+    }
+  }
+
+  Future<void> _enqueueOffline() async {
+    if (_recordingPath == null) return;
+    try {
+      await OfflineSyncService().enqueue(
+        widget.taskId,
+        _recordingPath!,
+        _recordingDuration,
+      );
+      if (mounted) {
+        setState(() => _state = CheckinState.recorded);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('网络不佳，已保存到离线队列，有网时自动提交'),
+            backgroundColor: Colors.orange[700],
+            action: SnackBarAction(
+              label: '查看',
+              textColor: Colors.white,
+              onPressed: () {},
+            ),
+          ),
+        );
+        Navigator.of(context).pop(true);
+      }
+    } catch (e) {
       if (mounted) {
         setState(() => _state = CheckinState.recorded);
         ScaffoldMessenger.of(context).showSnackBar(

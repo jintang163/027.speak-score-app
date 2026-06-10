@@ -183,6 +183,7 @@ class TodoService {
         '/todos/$taskId/checkin',
         filePath: audioFilePath,
         fileName: 'recording.aac',
+        fieldName: 'audioFile',
         extraFields: {'duration': durationInSeconds},
       );
       return true;

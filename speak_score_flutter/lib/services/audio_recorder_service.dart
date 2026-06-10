@@ -32,9 +32,13 @@ class AudioRecorderService {
         if (!granted) return false;
       }
 
-      final directory = await getTemporaryDirectory();
+      final directory = await getApplicationDocumentsDirectory();
+      final recordingsDir = Directory('${directory.path}/recordings');
+      if (!await recordingsDir.exists()) {
+        await recordingsDir.create(recursive: true);
+      }
       final path =
-          '${directory.path}/recording_${DateTime.now().millisecondsSinceEpoch}.aac';
+          '${recordingsDir.path}/recording_${DateTime.now().millisecondsSinceEpoch}.aac';
 
       await _recorder.start(
         path: path,

@@ -58,6 +58,19 @@ class _TodoDetailScreenState extends State<TodoDetailScreen> {
     return _todo?.assigneeId != null && _todo!.assigneeId == userId;
   }
 
+  TodoItem? get _myItem {
+    final userId = context.read<AuthService>().userInfo?.id;
+    if (userId == null || _todo?.items == null) return null;
+    for (final item in _todo!.items!) {
+      if (item.userId == userId) return item;
+    }
+    return null;
+  }
+
+  bool get _isParticipant {
+    return _myItem != null;
+  }
+
   bool get _isCreator {
     final userId = context.read<AuthService>().userInfo?.id;
     return _todo?.creatorId != null && _todo!.creatorId == userId;
@@ -333,6 +346,9 @@ class _TodoDetailScreenState extends State<TodoDetailScreen> {
       case 'COMPLETED':
         statusColor = Colors.green;
         statusLabel = '已完成';
+      case 'PENDING_SCORE':
+        statusColor = Colors.orange;
+        statusLabel = '待评分';
       case 'CANCELLED':
         statusColor = Colors.grey;
         statusLabel = '已取消';
@@ -396,14 +412,18 @@ class _TodoDetailScreenState extends State<TodoDetailScreen> {
   }
 
   Widget _buildActionSection() {
-    final canComplete = _isAssignee &&
+    final myItem = _myItem;
+    final canComplete = _isParticipant &&
+        myItem?.status != 'COMPLETED' &&
+        myItem?.status != 'REJECTED' &&
+        myItem?.status != 'PENDING_SCORE' &&
         _todo?.status != 'COMPLETED' &&
         _todo?.status != 'CANCELLED';
     final canUrge = _isCreator &&
         _todo?.status != 'COMPLETED' &&
         _todo?.status != 'CANCELLED';
-    final canCheckin = _isAssignee &&
-        _todo?.status == 'PENDING' &&
+    final canCheckin = _isParticipant &&
+        myItem?.status == 'PENDING' &&
         (_todo?.taskType == 'FOLLOW_READ' || _todo?.taskType == 'READ_ALOUD');
 
     if (!canComplete && !canUrge && !canCheckin) return const SizedBox.shrink();

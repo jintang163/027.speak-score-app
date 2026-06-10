@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'services/auth_service.dart';
 import 'services/push_service.dart';
+import 'services/offline_sync_service.dart';
 import 'screens/home_screen.dart';
 import 'screens/login_screen.dart';
 
@@ -73,6 +74,7 @@ class AuthWrapper extends StatefulWidget {
 
 class _AuthWrapperState extends State<AuthWrapper> {
   bool _pushInited = false;
+  bool _offlineSyncInited = false;
 
   @override
   Widget build(BuildContext context) {
@@ -91,8 +93,14 @@ class _AuthWrapperState extends State<AuthWrapper> {
       PushService().init();
     }
 
+    if (authService.isAuthenticated && !_offlineSyncInited) {
+      _offlineSyncInited = true;
+      OfflineSyncService().init();
+    }
+
     if (!authService.isAuthenticated) {
       _pushInited = false;
+      _offlineSyncInited = false;
     }
 
     if (authService.isAuthenticated) {
