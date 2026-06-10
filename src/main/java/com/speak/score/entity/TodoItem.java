@@ -31,6 +31,9 @@ public class TodoItem extends BaseEntity {
     @Column(name = "feedback", length = 500)
     private String feedback;
 
+    @Column(name = "score")
+    private Double score;
+
     @Column(name = "completed_at")
     private LocalDateTime completedAt;
 }

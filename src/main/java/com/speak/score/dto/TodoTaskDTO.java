@@ -35,8 +35,16 @@ public class TodoTaskDTO {
     private Integer remindBeforeMin;
     private Boolean remindSent;
     private Long parentTaskId;
+    private Long materialId;
+    private String materialTitle;
+    private String materialType;
+    private String referenceText;
     private List<TodoItemDTO> items;
     private String createdAt;
+
+    private Integer completedCount;
+    private Integer pendingCount;
+    private Double averageScore;
 
     private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
@@ -65,8 +73,15 @@ public class TodoTaskDTO {
         dto.setRemindBeforeMin(t.getRemindBeforeMin());
         dto.setRemindSent(t.getRemindSent());
         dto.setParentTaskId(t.getParentTaskId());
+        dto.setMaterialId(t.getMaterialId());
+        dto.setMaterialTitle(null);
+        dto.setMaterialType(null);
+        dto.setReferenceText(t.getReferenceText());
         dto.setItems(Collections.<TodoItemDTO>emptyList());
         dto.setCreatedAt(t.getCreatedAt() != null ? t.getCreatedAt().format(FORMATTER) : null);
+        dto.setCompletedCount(null);
+        dto.setPendingCount(null);
+        dto.setAverageScore(null);
         return dto;
     }
 }

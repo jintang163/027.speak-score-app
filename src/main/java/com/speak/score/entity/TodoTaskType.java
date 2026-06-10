@@ -4,5 +4,7 @@ public enum TodoTaskType {
     GENERAL,
     READING,
     PRACTICE,
-    REVIEW
+    REVIEW,
+    FOLLOW_READ,
+    READ_ALOUD
 }

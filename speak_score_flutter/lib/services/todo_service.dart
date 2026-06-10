@@ -58,11 +58,17 @@ class TodoService {
     return data != null ? TodoTask.fromJson(data) : null;
   }
 
+  Future<TodoTask?> copyTask(int taskId) async {
+    final response = await _apiClient.post('/todos/$taskId/copy');
+    final data = response.data['data'];
+    return data != null ? TodoTask.fromJson(data) : null;
+  }
+
   Future<bool> completeTodoItem(int taskId,
-      {String? feedback, String status = 'COMPLETED'}) async {
+      {String? feedback, double? score, String status = 'COMPLETED'}) async {
     try {
       await _apiClient.post('/todos/$taskId/complete',
-          data: {'feedback': feedback, 'status': status});
+          data: {'feedback': feedback, 'score': score, 'status': status});
       return true;
     } catch (_) {
       return false;
@@ -85,6 +91,46 @@ class TodoService {
       return true;
     } catch (_) {
       return false;
+    }
+  }
+
+  Future<TodoTaskProgress?> getTaskProgress(int taskId) async {
+    try {
+      final response = await _apiClient.get('/todos/$taskId/progress');
+      final data = response.data['data'];
+      return data != null ? TodoTaskProgress.fromJson(data) : null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<List<TodoTaskProgress>> getTaskProgressByClass({int? classId}) async {
+    try {
+      final queryParams = <String, dynamic>{
+        if (classId != null) 'classId': classId,
+      };
+      final response = await _apiClient.get('/todos/class-progress',
+          queryParameters: queryParams);
+      final data = response.data['data'];
+      if (data is List) {
+        return data
+            .map((e) => TodoTaskProgress.fromJson(e as Map<String, dynamic>))
+            .toList();
+      }
+      return [];
+    } catch (_) {
+      return [];
+    }
+  }
+
+  Future<SchoolTaskStats?> getSchoolTaskStats(int schoolId) async {
+    try {
+      final response =
+          await _apiClient.get('/todos/school-stats/$schoolId');
+      final data = response.data['data'];
+      return data != null ? SchoolTaskStats.fromJson(data) : null;
+    } catch (_) {
+      return null;
     }
   }
 

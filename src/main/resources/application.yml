@@ -105,6 +105,19 @@ notification:
     cron: ${NOTIFY_REMINDER_CRON:0 */5 * * * *}
     advance-minutes: ${NOTIFY_ADVANCE_MINUTES:30}
 
+rocketmq:
+  name-server: ${ROCKETMQ_NAME_SERVER:}
+  producer-group: ${ROCKETMQ_PRODUCER_GROUP:speak-score-producer}
+  todo-task-topic: ${ROCKETMQ_TODO_TASK_TOPIC:todo-task-topic}
+
+push:
+  getui:
+    enabled: ${PUSH_GETUI_ENABLED:false}
+    app-id: ${PUSH_GETUI_APP_ID:}
+    app-key: ${PUSH_GETUI_APP_KEY:}
+    master-secret: ${PUSH_GETUI_MASTER_SECRET:}
+    package-name: ${PUSH_GETUI_PACKAGE_NAME:}
+
 logging:
   level:
     com.speak.score: DEBUG

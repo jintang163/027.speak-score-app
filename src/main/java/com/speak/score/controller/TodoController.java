@@ -9,6 +9,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import javax.validation.Valid;
+import java.util.List;
 
 @RestController
 @RequestMapping("/todos")
@@ -33,6 +34,15 @@ public class TodoController {
             Authentication auth) {
         Long userId = (Long) auth.getPrincipal();
         return ApiResponse.success(todoService.updateTodo(taskId, userId, request));
+    }
+
+    @PostMapping("/{id}/copy")
+    @PreAuthorize("hasAnyRole('TEACHER', 'EDU_OFFICE')")
+    public ApiResponse<TodoTaskDTO> copyTodo(
+            @PathVariable("id") Long taskId,
+            Authentication auth) {
+        Long userId = (Long) auth.getPrincipal();
+        return ApiResponse.success(todoService.copyTask(taskId, userId));
     }
 
     @PostMapping("/{id}/urge")
@@ -65,6 +75,7 @@ public class TodoController {
     }
 
     @GetMapping("/created")
+    @PreAuthorize("hasAnyRole('TEACHER', 'EDU_OFFICE')")
     public ApiResponse<Page<TodoTaskDTO>> getCreatedTodos(
             @RequestParam(required = false) String status,
             @RequestParam(defaultValue = "0") int page,
@@ -88,5 +99,30 @@ public class TodoController {
         Long userId = (Long) auth.getPrincipal();
         todoService.cancelTodo(taskId, userId);
         return ApiResponse.success();
+    }
+
+    @GetMapping("/{id}/progress")
+    @PreAuthorize("hasAnyRole('TEACHER', 'EDU_OFFICE')")
+    public ApiResponse<TodoTaskProgressDTO> getTaskProgress(
+            @PathVariable("id") Long taskId,
+            Authentication auth) {
+        return ApiResponse.success(todoService.getTaskProgress(taskId));
+    }
+
+    @GetMapping("/class-progress")
+    @PreAuthorize("hasAnyRole('TEACHER', 'EDU_OFFICE')")
+    public ApiResponse<List<TodoTaskProgressDTO>> getTaskProgressByClass(
+            @RequestParam(required = false) Long classId,
+            Authentication auth) {
+        Long userId = (Long) auth.getPrincipal();
+        return ApiResponse.success(todoService.getTaskProgressByClass(userId, classId));
+    }
+
+    @GetMapping("/school-stats/{schoolId}")
+    @PreAuthorize("hasRole('EDU_OFFICE')")
+    public ApiResponse<SchoolTaskStatsDTO> getSchoolTaskStats(
+            @PathVariable Long schoolId,
+            Authentication auth) {
+        return ApiResponse.success(todoService.getSchoolTaskStats(schoolId));
     }
 }

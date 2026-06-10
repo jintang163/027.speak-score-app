@@ -71,4 +71,10 @@ public class TodoTask extends BaseEntity {
 
     @Column(name = "parent_task_id")
     private Long parentTaskId;
+
+    @Column(name = "material_id")
+    private Long materialId;
+
+    @Column(name = "reference_text", columnDefinition = "TEXT")
+    private String referenceText;
 }

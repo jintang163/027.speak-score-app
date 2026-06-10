@@ -18,6 +18,7 @@ public class TodoItemDTO {
     private String userName;
     private String status;
     private String feedback;
+    private Double score;
     private String completedAt;
     private String createdAt;
 
@@ -34,6 +35,7 @@ public class TodoItemDTO {
         dto.setUserName(null);
         dto.setStatus(item.getStatus() != null ? item.getStatus().name() : null);
         dto.setFeedback(item.getFeedback());
+        dto.setScore(item.getScore());
         dto.setCompletedAt(item.getCompletedAt() != null ? item.getCompletedAt().format(FORMATTER) : null);
         dto.setCreatedAt(item.getCreatedAt() != null ? item.getCreatedAt().format(FORMATTER) : null);
         return dto;

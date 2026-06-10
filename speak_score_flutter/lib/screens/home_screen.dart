@@ -17,6 +17,7 @@ import 'package:speak_score_flutter/screens/edu_office/edu_office_ranking_screen
 import 'package:speak_score_flutter/screens/edu_office/edu_office_profile_screen.dart';
 import 'package:speak_score_flutter/screens/material/material_list_screen.dart';
 import 'package:speak_score_flutter/screens/notification/notification_list_screen.dart';
+import 'package:speak_score_flutter/screens/todo/todo_create_screen.dart';
 import 'package:speak_score_flutter/screens/todo/todo_list_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -318,9 +319,29 @@ class _HomeScreenState extends State<HomeScreen> {
       floatingActionButton: _currentIndex == 0
           ? FloatingActionButton.extended(
               onPressed: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('${_fabLabel!}功能开发中')),
-                );
+                if (_primaryRole == 'TEACHER') {
+                  Navigator.of(context)
+                      .push(MaterialPageRoute(
+                    builder: (_) => const TodoCreateScreen(),
+                  ))
+                      .then((result) {
+                    if (result == true) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                            content: Text('任务发布成功'),
+                            backgroundColor: Colors.green),
+                      );
+                    }
+                  });
+                } else if (_primaryRole == 'EDU_OFFICE') {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('发送通知功能开发中')),
+                  );
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('开始打卡功能开发中')),
+                  );
+                }
               },
               icon: Icon(_fabIcon),
               label: Text(_fabLabel!),

@@ -21,8 +21,15 @@ class TodoTask {
   final int? remindBeforeMin;
   final bool? remindSent;
   final int? parentTaskId;
+  final int? materialId;
+  final String? materialTitle;
+  final String? materialType;
+  final String? referenceText;
   final List<TodoItem>? items;
   final String? createdAt;
+  final int? completedCount;
+  final int? pendingCount;
+  final double? averageScore;
 
   const TodoTask({
     this.id,
@@ -45,8 +52,15 @@ class TodoTask {
     this.remindBeforeMin,
     this.remindSent,
     this.parentTaskId,
+    this.materialId,
+    this.materialTitle,
+    this.materialType,
+    this.referenceText,
     this.items,
     this.createdAt,
+    this.completedCount,
+    this.pendingCount,
+    this.averageScore,
   });
 
   factory TodoTask.fromJson(Map<String, dynamic> json) {
@@ -71,10 +85,17 @@ class TodoTask {
       remindBeforeMin: json['remindBeforeMin'] as int?,
       remindSent: json['remindSent'] as bool?,
       parentTaskId: json['parentTaskId'] as int?,
+      materialId: json['materialId'] as int?,
+      materialTitle: json['materialTitle'] as String?,
+      materialType: json['materialType'] as String?,
+      referenceText: json['referenceText'] as String?,
       items: (json['items'] as List<dynamic>?)
           ?.map((e) => TodoItem.fromJson(e as Map<String, dynamic>))
           .toList(),
       createdAt: json['createdAt'] as String?,
+      completedCount: json['completedCount'] as int?,
+      pendingCount: json['pendingCount'] as int?,
+      averageScore: (json['averageScore'] as num?)?.toDouble(),
     );
   }
 
@@ -99,9 +120,50 @@ class TodoTask {
         'remindBeforeMin': remindBeforeMin,
         'remindSent': remindSent,
         'parentTaskId': parentTaskId,
+        'materialId': materialId,
+        'materialTitle': materialTitle,
+        'materialType': materialType,
+        'referenceText': referenceText,
         'items': items?.map((e) => e.toJson()).toList(),
         'createdAt': createdAt,
+        'completedCount': completedCount,
+        'pendingCount': pendingCount,
+        'averageScore': averageScore,
       };
+
+  String get taskTypeLabel {
+    switch (taskType) {
+      case 'FOLLOW_READ':
+        return '跟读';
+      case 'READ_ALOUD':
+        return '朗读';
+      case 'READING':
+        return '阅读';
+      case 'PRACTICE':
+        return '练习';
+      case 'REVIEW':
+        return '复习';
+      default:
+        return '通用';
+    }
+  }
+
+  IconData get taskTypeIcon {
+    switch (taskType) {
+      case 'FOLLOW_READ':
+        return Icons.record_voice_over;
+      case 'READ_ALOUD':
+        return Icons.mic;
+      case 'READING':
+        return Icons.menu_book;
+      case 'PRACTICE':
+        return Icons.fitness_center;
+      case 'REVIEW':
+        return Icons.replay;
+      default:
+        return Icons.assignment;
+    }
+  }
 
   String get priorityLabel {
     switch (priority) {
@@ -152,6 +214,12 @@ class TodoTask {
     }
     return DateTime.tryParse(deadline!)?.isBefore(DateTime.now()) ?? false;
   }
+
+  double get completionRate {
+    final total = (completedCount ?? 0) + (pendingCount ?? 0);
+    if (total == 0) return 0;
+    return (completedCount ?? 0) / total;
+  }
 }
 
 class TodoItem {
@@ -161,6 +229,7 @@ class TodoItem {
   final String? userName;
   final String? status;
   final String? feedback;
+  final double? score;
   final String? completedAt;
   final String? createdAt;
 
@@ -171,6 +240,7 @@ class TodoItem {
     this.userName,
     this.status,
     this.feedback,
+    this.score,
     this.completedAt,
     this.createdAt,
   });
@@ -183,6 +253,7 @@ class TodoItem {
       userName: json['userName'] as String?,
       status: json['status'] as String?,
       feedback: json['feedback'] as String?,
+      score: (json['score'] as num?)?.toDouble(),
       completedAt: json['completedAt'] as String?,
       createdAt: json['createdAt'] as String?,
     );
@@ -195,9 +266,118 @@ class TodoItem {
         'userName': userName,
         'status': status,
         'feedback': feedback,
+        'score': score,
         'completedAt': completedAt,
         'createdAt': createdAt,
       };
+}
+
+class TodoTaskProgress {
+  final int? taskId;
+  final String? title;
+  final String? taskType;
+  final String? status;
+  final String? deadline;
+  final int? totalStudents;
+  final int? completedCount;
+  final int? pendingCount;
+  final double? averageScore;
+  final double? completionRate;
+
+  const TodoTaskProgress({
+    this.taskId,
+    this.title,
+    this.taskType,
+    this.status,
+    this.deadline,
+    this.totalStudents,
+    this.completedCount,
+    this.pendingCount,
+    this.averageScore,
+    this.completionRate,
+  });
+
+  factory TodoTaskProgress.fromJson(Map<String, dynamic> json) {
+    return TodoTaskProgress(
+      taskId: json['taskId'] as int?,
+      title: json['title'] as String?,
+      taskType: json['taskType'] as String?,
+      status: json['status'] as String?,
+      deadline: json['deadline'] as String?,
+      totalStudents: json['totalStudents'] as int?,
+      completedCount: json['completedCount'] as int?,
+      pendingCount: json['pendingCount'] as int?,
+      averageScore: (json['averageScore'] as num?)?.toDouble(),
+      completionRate: (json['completionRate'] as num?)?.toDouble(),
+    );
+  }
+
+  String get taskTypeLabel {
+    switch (taskType) {
+      case 'FOLLOW_READ':
+        return '跟读';
+      case 'READ_ALOUD':
+        return '朗读';
+      case 'READING':
+        return '阅读';
+      case 'PRACTICE':
+        return '练习';
+      case 'REVIEW':
+        return '复习';
+      default:
+        return '通用';
+    }
+  }
+
+  String get statusLabel {
+    switch (status) {
+      case 'PENDING':
+        return '进行中';
+      case 'IN_PROGRESS':
+        return '进行中';
+      case 'COMPLETED':
+        return '已结束';
+      case 'CANCELLED':
+        return '已取消';
+      default:
+        return '未知';
+    }
+  }
+}
+
+class SchoolTaskStats {
+  final int? schoolId;
+  final String? schoolName;
+  final int? totalTasks;
+  final int? activeTasks;
+  final int? completedTasks;
+  final int? totalCheckins;
+  final double? averageScore;
+  final double? completionRate;
+
+  const SchoolTaskStats({
+    this.schoolId,
+    this.schoolName,
+    this.totalTasks,
+    this.activeTasks,
+    this.completedTasks,
+    this.totalCheckins,
+    this.averageScore,
+    this.completionRate,
+  });
+
+  factory SchoolTaskStats.fromJson(Map<String, dynamic> json) {
+    return SchoolTaskStats(
+      schoolId: json['schoolId'] as int?,
+      schoolName: json['schoolName'] as String?,
+      totalTasks: json['totalTasks'] as int?,
+      activeTasks: json['activeTasks'] as int?,
+      completedTasks: json['completedTasks'] as int?,
+      totalCheckins: json['totalCheckins'] as int?,
+      averageScore: (json['averageScore'] as num?)?.toDouble(),
+      completionRate: (json['completionRate'] as num?)?.toDouble(),
+    );
+  }
 }
 
 class NotifyMessage {

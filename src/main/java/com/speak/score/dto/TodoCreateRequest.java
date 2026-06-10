@@ -37,4 +37,8 @@ public class TodoCreateRequest {
     private Integer remindBeforeMin = 30;
 
     private Long parentTaskId;
+
+    private Long materialId;
+
+    private String referenceText;
 }

@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:speak_score_flutter/models/todo_info.dart';
 import 'package:speak_score_flutter/services/auth_service.dart';
 import 'package:speak_score_flutter/services/organization_service.dart';
+import 'package:speak_score_flutter/services/todo_service.dart';
 import 'package:speak_score_flutter/models/user_info.dart';
 
 class EduOfficeSchoolScreen extends StatefulWidget {
@@ -16,12 +18,15 @@ class _EduOfficeSchoolScreenState extends State<EduOfficeSchoolScreen>
   late TabController _tabController;
 
   final OrganizationService _orgService = OrganizationService();
+  final TodoService _todoService = TodoService();
   List<Grade> _grades = [];
   List<ClassInfo> _classes = [];
   List<UserInfo> _teachers = [];
+  SchoolTaskStats? _taskStats;
   bool _isLoadingGrades = false;
   bool _isLoadingClasses = false;
   bool _isLoadingTeachers = false;
+  bool _isLoadingStats = false;
 
   @override
   void initState() {
@@ -39,6 +44,7 @@ class _EduOfficeSchoolScreenState extends State<EduOfficeSchoolScreen>
   Future<void> _loadAll() async {
     _loadGrades();
     _loadClasses();
+    _loadTaskStats();
   }
 
   Future<void> _loadGrades() async {
@@ -78,6 +84,26 @@ class _EduOfficeSchoolScreenState extends State<EduOfficeSchoolScreen>
       }
     } catch (_) {
       if (mounted) setState(() => _isLoadingClasses = false);
+    }
+  }
+
+  Future<void> _loadTaskStats() async {
+    setState(() => _isLoadingStats = true);
+    try {
+      final schoolId = context.read<AuthService>().userInfo?.schoolId;
+      if (schoolId == null) {
+        if (mounted) setState(() => _isLoadingStats = false);
+        return;
+      }
+      final stats = await _todoService.getSchoolTaskStats(schoolId);
+      if (mounted) {
+        setState(() {
+          _taskStats = stats;
+          _isLoadingStats = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) setState(() => _isLoadingStats = false);
     }
   }
 
@@ -121,28 +147,83 @@ class _EduOfficeSchoolScreenState extends State<EduOfficeSchoolScreen>
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       color: Colors.purple.withValues(alpha: 0.1),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(Icons.school, size: 40, color: Colors.purple),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  userInfo?.schoolName ?? '未绑定学校',
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
+          Row(
+            children: [
+              const Icon(Icons.school, size: 40, color: Colors.purple),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      userInfo?.schoolName ?? '未绑定学校',
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    Text(
+                      '${_grades.length}个年级 · ${_classes.length}个班级',
+                      style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+                    ),
+                  ],
                 ),
+              ),
+            ],
+          ),
+          if (_taskStats != null) ...[
+            const SizedBox(height: 12),
+            const Divider(height: 1),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                _buildStatItem('总任务', _taskStats!.totalTasks ?? 0, Colors.purple),
+                const SizedBox(width: 16),
+                _buildStatItem('进行中', _taskStats!.activeTasks ?? 0, Colors.orange),
+                const SizedBox(width: 16),
+                _buildStatItem('已完成', _taskStats!.completedTasks ?? 0, Colors.green),
+                const SizedBox(width: 16),
+                _buildStatItem('打卡数', _taskStats!.totalCheckins ?? 0, Colors.blue),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                if (_taskStats!.averageScore != null)
+                  Text(
+                    '全校平均分: ${_taskStats!.averageScore!.toStringAsFixed(1)}',
+                    style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+                  ),
+                const Spacer(),
                 Text(
-                  '${_grades.length}个年级 · ${_classes.length}个班级',
-                  style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+                  '完成率: ${(_taskStats!.completionRate ?? 0).toStringAsFixed(1)}%',
+                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
                 ),
               ],
             ),
+          ] else if (_isLoadingStats) ...[
+            const SizedBox(height: 12),
+            const Center(child: SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatItem(String label, int value, Color color) {
+    return Expanded(
+      child: Column(
+        children: [
+          Text(
+            '$value',
+            style: TextStyle(
+                fontSize: 20, fontWeight: FontWeight.bold, color: color),
           ),
+          Text(label,
+              style: TextStyle(fontSize: 12, color: Colors.grey[600])),
         ],
       ),
     );

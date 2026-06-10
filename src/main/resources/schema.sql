@@ -252,7 +252,7 @@ CREATE TABLE todo_task (
     id              BIGINT AUTO_INCREMENT PRIMARY KEY,
     title           VARCHAR(200) NOT NULL,
     description     VARCHAR(1000),
-    task_type       VARCHAR(30)  NOT NULL DEFAULT 'GENERAL' COMMENT 'GENERAL,READING,PRACTICE,REVIEW',
+    task_type       VARCHAR(30)  NOT NULL DEFAULT 'GENERAL' COMMENT 'GENERAL,READING,PRACTICE,REVIEW,FOLLOW_READ,READ_ALOUD',
     priority        VARCHAR(10)  NOT NULL DEFAULT 'NORMAL' COMMENT 'LOW,NORMAL,HIGH,URGENT',
     status          VARCHAR(20)  NOT NULL DEFAULT 'PENDING' COMMENT 'PENDING,IN_PROGRESS,COMPLETED,CANCELLED',
     creator_id      BIGINT       NOT NULL,
@@ -267,6 +267,8 @@ CREATE TABLE todo_task (
     remind_before_min INT        NOT NULL DEFAULT 30 COMMENT 'remind N minutes before deadline',
     remind_sent     BIT(1)       NOT NULL DEFAULT 0,
     parent_task_id  BIGINT,
+    material_id     BIGINT COMMENT 'associated learning material id',
+    reference_text  TEXT COMMENT 'reference text for follow-read tasks',
     created_at      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     deleted         BIT(1)       NOT NULL DEFAULT 0,
@@ -274,6 +276,7 @@ CREATE TABLE todo_task (
     INDEX idx_assignee (assignee_id),
     INDEX idx_status (status),
     INDEX idx_deadline (deadline),
+    INDEX idx_material (material_id),
     CONSTRAINT fk_todo_creator FOREIGN KEY (creator_id) REFERENCES sys_user(id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -283,6 +286,7 @@ CREATE TABLE todo_item (
     user_id         BIGINT       NOT NULL,
     status          VARCHAR(20)  NOT NULL DEFAULT 'PENDING' COMMENT 'PENDING,COMPLETED,REJECTED',
     feedback        VARCHAR(500),
+    score           DOUBLE COMMENT 'scoring result for the checkin',
     completed_at    DATETIME,
     created_at      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,

@@ -20,4 +20,8 @@ public interface TodoItemRepository extends JpaRepository<TodoItem, Long> {
     long countByTaskIdAndStatusAndDeletedFalse(Long taskId, TodoItemStatus status);
 
     List<TodoItem> findByTaskIdAndStatusAndDeletedFalse(Long taskId, TodoItemStatus status);
+
+    List<TodoItem> findByTaskIdInAndDeletedFalse(List<Long> taskIds);
+
+    Double findAverageScoreByTaskIdAndStatusAndDeletedFalse(Long taskId, TodoItemStatus status);
 }
