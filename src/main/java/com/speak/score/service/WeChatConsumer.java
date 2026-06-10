@@ -1,11 +1,11 @@
 package com.speak.score.service;
 
 import com.speak.score.config.NotificationConfig;
-import com.speak.score.config.WeChatConfig;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.rocketmq.spring.annotation.RocketMQMessageListener;
 import org.apache.rocketmq.spring.core.RocketMQListener;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
@@ -24,7 +24,9 @@ import java.util.Map;
 public class WeChatConsumer implements RocketMQListener<Map<String, Object>> {
 
     private final NotificationConfig notificationConfig;
-    private final WeChatConfig weChatConfig;
+
+    @Autowired(required = false)
+    private WeChatSubscribeMessageService weChatSubscribeMessageService;
 
     @Override
     public void onMessage(Map<String, Object> message) {
@@ -34,12 +36,27 @@ public class WeChatConsumer implements RocketMQListener<Map<String, Object>> {
             String content = (String) message.get("content");
             @SuppressWarnings("unchecked")
             List<Long> receiverIds = (List<Long>) message.get("receiverIds");
+
             if (!notificationConfig.getWeChat().isEnabled()) {
                 log.warn("WeChat notification is disabled, skipping");
                 return;
             }
-            log.info("Processing WeChat subscribe message: taskId={}, receiverCount={}", taskId,
-                    receiverIds != null ? receiverIds.size() : 0);
+
+            if (weChatSubscribeMessageService == null) {
+                log.warn("WeChatSubscribeMessageService not available, skipping for taskId={}", taskId);
+                return;
+            }
+
+            String templateId = notificationConfig.getWeChat().getTemplateId();
+            Map<String, String> data = weChatSubscribeMessageService
+                    .buildTaskNotificationData(title, content, "请尽快完成");
+            String page = "pages/task/detail?taskId=" + taskId;
+
+            if (receiverIds != null && !receiverIds.isEmpty()) {
+                weChatSubscribeMessageService.sendSubscribeMessageToUsers(receiverIds, templateId, data, page);
+            } else {
+                log.info("No receiverIds for wechat message taskId={}, skipping", taskId);
+            }
         } catch (Exception e) {
             log.error("Failed to process WeChat subscribe message", e);
         }

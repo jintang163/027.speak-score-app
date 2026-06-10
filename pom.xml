@@ -121,8 +121,8 @@
 
         <dependency>
             <groupId>com.getui.push</groupId>
-            <artifactId>gtsdk</artifactId>
-            <version>4.1.2.0</version>
+            <artifactId>restful-sdk</artifactId>
+            <version>1.0.7.0</version>
         </dependency>
 
         <dependency>

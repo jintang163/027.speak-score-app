@@ -10,6 +10,6 @@ import lombok.AllArgsConstructor;
 public class TodoItemCompleteRequest {
 
     private String feedback;
-
+    private Double score;
     private String status = "COMPLETED";
 }

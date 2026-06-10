@@ -150,6 +150,7 @@ public class TodoService {
         TodoItemStatus newStatus = TodoItemStatus.valueOf(request.getStatus());
         item.setStatus(newStatus);
         item.setFeedback(request.getFeedback());
+        item.setScore(request.getScore());
         item.setCompletedAt(LocalDateTime.now());
         TodoItem savedItem = todoItemRepository.save(item);
 
@@ -206,14 +207,24 @@ public class TodoService {
 
     public Page<TodoTaskDTO> getMyTodos(Long userId, String status, int page, int size) {
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
-        Page<TodoTask> taskPage;
+        Page<Long> taskIds;
         if (status != null && !status.isEmpty()) {
-            TodoStatus todoStatus = TodoStatus.valueOf(status);
-            taskPage = todoTaskRepository.findByAssigneeIdAndStatusAndDeletedFalse(userId, todoStatus, pageable);
+            TodoItemStatus itemStatus = TodoItemStatus.valueOf(status);
+            taskIds = todoItemRepository.findTaskIdsByUserIdAndStatusAndDeletedFalse(userId, itemStatus, pageable);
         } else {
-            taskPage = todoTaskRepository.findByAssigneeIdAndDeletedFalse(userId, pageable);
+            taskIds = todoItemRepository.findTaskIdsByUserIdAndDeletedFalse(userId, pageable);
         }
-        return taskPage.map(this::enrichTaskDTO);
+
+        if (taskIds.isEmpty()) {
+            return Page.empty(pageable);
+        }
+
+        List<TodoTask> tasks = todoTaskRepository.findAllById(taskIds.getContent());
+        List<TodoTaskDTO> dtos = tasks.stream()
+                .map(this::enrichTaskDTO)
+                .collect(Collectors.toList());
+
+        return new org.springframework.data.domain.PageImpl<>(dtos, pageable, taskIds.getTotalElements());
     }
 
     public Page<TodoTaskDTO> getCreatedTodos(Long userId, String status, int page, int size) {

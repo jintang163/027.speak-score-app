@@ -116,7 +116,7 @@ push:
     app-id: ${PUSH_GETUI_APP_ID:}
     app-key: ${PUSH_GETUI_APP_KEY:}
     master-secret: ${PUSH_GETUI_MASTER_SECRET:}
-    package-name: ${PUSH_GETUI_PACKAGE_NAME:}
+    package-name: ${PUSH_GETUI_PACKAGE_NAME:com.speak.score}
 
 logging:
   level:

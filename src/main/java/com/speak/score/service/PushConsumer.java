@@ -1,10 +1,10 @@
 package com.speak.score.service;
 
-import com.speak.score.config.PushConfig;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.rocketmq.spring.annotation.RocketMQMessageListener;
 import org.apache.rocketmq.spring.core.RocketMQListener;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
@@ -22,6 +22,9 @@ import java.util.Map;
 )
 public class PushConsumer implements RocketMQListener<Map<String, Object>> {
 
+    @Autowired(required = false)
+    private PushNotificationService pushNotificationService;
+
     @Override
     public void onMessage(Map<String, Object> message) {
         try {
@@ -30,8 +33,17 @@ public class PushConsumer implements RocketMQListener<Map<String, Object>> {
             String content = (String) message.get("content");
             @SuppressWarnings("unchecked")
             List<Long> receiverIds = (List<Long>) message.get("receiverIds");
-            log.info("Processing push notification: taskId={}, receiverCount={}", taskId,
-                    receiverIds != null ? receiverIds.size() : 0);
+
+            if (pushNotificationService == null) {
+                log.warn("PushNotificationService not available, skipping push for taskId={}", taskId);
+                return;
+            }
+
+            if (receiverIds == null || receiverIds.isEmpty()) {
+                pushNotificationService.pushToAll(title, content, taskId);
+            } else {
+                pushNotificationService.pushToUsers(receiverIds, title, content, taskId);
+            }
         } catch (Exception e) {
             log.error("Failed to process push notification", e);
         }

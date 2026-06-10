@@ -333,6 +333,21 @@ CREATE TABLE notify_channel_config (
     CONSTRAINT fk_ncc_user FOREIGN KEY (user_id) REFERENCES sys_user(id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE IF NOT EXISTS user_device (
+    id              BIGINT AUTO_INCREMENT PRIMARY KEY,
+    user_id         BIGINT       NOT NULL,
+    device_type     VARCHAR(20)  NOT NULL COMMENT 'GETUI,FCP,APNS',
+    device_token    VARCHAR(200) NOT NULL COMMENT 'push SDK clientId / device token',
+    platform        VARCHAR(20) COMMENT 'android,ios',
+    bundle_id       VARCHAR(100),
+    created_at      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    deleted         BIT(1)       NOT NULL DEFAULT 0,
+    UNIQUE KEY uk_user_device (user_id, device_type),
+    INDEX idx_device_type (device_type),
+    CONSTRAINT fk_ud_user FOREIGN KEY (user_id) REFERENCES sys_user(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 INSERT INTO sys_role (role_code, role_name, description) VALUES
     ('STUDENT', '学生', '学生角色，可跟读打卡、查看成绩和排行'),
     ('TEACHER', '老师', '老师角色，可下发任务、管理本班学生、查看班级成绩'),

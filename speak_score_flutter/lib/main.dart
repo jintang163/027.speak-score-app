@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'services/auth_service.dart';
+import 'services/push_service.dart';
 import 'screens/home_screen.dart';
 import 'screens/login_screen.dart';
 
@@ -28,7 +29,11 @@ class _SpeakScoreAppState extends State<SpeakScoreApp> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<AuthService>().loadFromStorage();
+      context.read<AuthService>().loadFromStorage().then((_) {
+        if (context.read<AuthService>().isAuthenticated) {
+          PushService().init();
+        }
+      });
     });
   }
 
@@ -59,8 +64,15 @@ class _SpeakScoreAppState extends State<SpeakScoreApp> {
   }
 }
 
-class AuthWrapper extends StatelessWidget {
+class AuthWrapper extends StatefulWidget {
   const AuthWrapper({super.key});
+
+  @override
+  State<AuthWrapper> createState() => _AuthWrapperState();
+}
+
+class _AuthWrapperState extends State<AuthWrapper> {
+  bool _pushInited = false;
 
   @override
   Widget build(BuildContext context) {
@@ -72,6 +84,15 @@ class AuthWrapper extends StatelessWidget {
           child: CircularProgressIndicator(),
         ),
       );
+    }
+
+    if (authService.isAuthenticated && !_pushInited) {
+      _pushInited = true;
+      PushService().init();
+    }
+
+    if (!authService.isAuthenticated) {
+      _pushInited = false;
     }
 
     if (authService.isAuthenticated) {
