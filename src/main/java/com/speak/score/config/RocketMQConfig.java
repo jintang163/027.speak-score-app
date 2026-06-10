@@ -16,4 +16,5 @@ public class RocketMQConfig {
     private String pushTag = "push";
     private String wechatTag = "wechat";
     private String scoringTag = "scoring";
+    private String scoringRetryTag = "scoring_retry";
 }

@@ -42,4 +42,25 @@ public class TodoItem extends BaseEntity {
 
     @Column(name = "completed_at")
     private LocalDateTime completedAt;
+
+    @Column(name = "teacher_score")
+    private Double teacherScore;
+
+    @Column(name = "teacher_feedback", length = 1000)
+    private String teacherFeedback;
+
+    @Column(name = "teacher_audio_url", length = 500)
+    private String teacherAudioUrl;
+
+    @Column(name = "teacher_id")
+    private Long teacherId;
+
+    @Column(name = "teacher_reviewed_at")
+    private LocalDateTime teacherReviewedAt;
+
+    @Column(name = "needs_manual_review")
+    private Boolean needsManualReview = false;
+
+    @Column(name = "retry_count")
+    private Integer retryCount = 0;
 }

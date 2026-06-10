@@ -4,5 +4,6 @@ public enum TodoItemStatus {
     PENDING,
     PENDING_SCORE,
     COMPLETED,
-    REJECTED
+    REJECTED,
+    NEEDS_REVIEW
 }

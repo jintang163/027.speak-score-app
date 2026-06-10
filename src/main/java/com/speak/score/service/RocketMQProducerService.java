@@ -82,4 +82,22 @@ public class RocketMQProducerService {
             log.error("Failed to send scoring message: itemId={}, taskId={}", itemId, taskId, e);
         }
     }
+
+    public void sendScoringRetryMessage(Long itemId, Long taskId, Long userId, String audioUrl, String referenceText, int retryCount) {
+        String destination = rocketMQConfig.getTodoTaskTopic() + ":" + rocketMQConfig.getScoringRetryTag();
+        Map<String, Object> message = new HashMap<>();
+        message.put("itemId", itemId);
+        message.put("taskId", taskId);
+        message.put("userId", userId);
+        message.put("audioUrl", audioUrl);
+        message.put("referenceText", referenceText);
+        message.put("retryCount", retryCount);
+        message.put("timestamp", System.currentTimeMillis());
+        try {
+            rocketMQTemplate.syncSend(destination, message, 3000, 3);
+            log.info("Sent scoring retry message: itemId={}, retryCount={}", itemId, retryCount);
+        } catch (Exception e) {
+            log.error("Failed to send scoring retry message: itemId={}, retryCount={}", itemId, retryCount, e);
+        }
+    }
 }

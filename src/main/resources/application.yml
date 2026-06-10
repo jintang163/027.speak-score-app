@@ -122,3 +122,18 @@ logging:
   level:
     com.speak.score: DEBUG
     org.springframework.security: DEBUG
+
+speech:
+  scoring:
+    provider: mock
+    tencent-secret-id: ${TENCENT_SECRET_ID:}
+    tencent-secret-key: ${TENCENT_SECRET_KEY:}
+    tencent-region: ap-beijing
+    iflytek-app-id: ${IFLYTEK_APP_ID:}
+    iflytek-secret-key: ${IFLYTEK_SECRET_KEY:}
+    iflytek-api-url: https://api.xfyun.cn/v1/service/v1/ise
+    max-retry: 3
+    rate-limit-per-minute: 60
+    cache-ttl-minutes: 60
+    connect-timeout-ms: 5000
+    read-timeout-ms: 30000

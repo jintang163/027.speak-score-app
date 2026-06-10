@@ -281,24 +281,49 @@ CREATE TABLE todo_task (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE todo_item (
-    id              BIGINT AUTO_INCREMENT PRIMARY KEY,
-    task_id         BIGINT       NOT NULL,
-    user_id         BIGINT       NOT NULL,
-    status          VARCHAR(20)  NOT NULL DEFAULT 'PENDING' COMMENT 'PENDING,PENDING_SCORE,COMPLETED,REJECTED',
-    feedback        VARCHAR(500),
-    score           DOUBLE COMMENT 'scoring result for the checkin',
-    audio_url       VARCHAR(500) COMMENT 'audio file URL on OSS',
-    duration        INT COMMENT 'audio duration in seconds',
-    completed_at    DATETIME,
-    created_at      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    deleted         BIT(1)       NOT NULL DEFAULT 0,
+    id                   BIGINT AUTO_INCREMENT PRIMARY KEY,
+    task_id              BIGINT       NOT NULL,
+    user_id              BIGINT       NOT NULL,
+    status               VARCHAR(20)  NOT NULL DEFAULT 'PENDING' COMMENT 'PENDING,PENDING_SCORE,COMPLETED,REJECTED,NEEDS_REVIEW',
+    feedback             VARCHAR(500),
+    score                DOUBLE COMMENT 'scoring result for the checkin',
+    audio_url            VARCHAR(500) COMMENT 'audio file URL on OSS',
+    duration             INT COMMENT 'audio duration in seconds',
+    completed_at         DATETIME,
+    teacher_score        DOUBLE COMMENT 'teacher review score',
+    teacher_feedback     VARCHAR(1000) COMMENT 'teacher review feedback',
+    teacher_audio_url    VARCHAR(500) COMMENT 'teacher review audio URL',
+    teacher_id           BIGINT COMMENT 'teacher user id',
+    teacher_reviewed_at  DATETIME COMMENT 'teacher review time',
+    needs_manual_review  TINYINT(1)   DEFAULT 0 COMMENT 'whether needs manual review',
+    retry_count          INT          DEFAULT 0 COMMENT 'scoring retry count',
+    created_at           DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at           DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    deleted              BIT(1)       NOT NULL DEFAULT 0,
     UNIQUE KEY uk_task_user (task_id, user_id),
     INDEX idx_task (task_id),
     INDEX idx_user (user_id),
+    INDEX idx_teacher (teacher_id),
     CONSTRAINT fk_ti_task FOREIGN KEY (task_id) REFERENCES todo_task(id),
     CONSTRAINT fk_ti_user FOREIGN KEY (user_id) REFERENCES sys_user(id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS speech_score_detail (
+    id                   BIGINT AUTO_INCREMENT PRIMARY KEY,
+    item_id              BIGINT       NOT NULL,
+    overall_score        DOUBLE,
+    pronunciation_score  DOUBLE,
+    fluency_score        DOUBLE,
+    completeness_score   DOUBLE,
+    accuracy_score       DOUBLE,
+    error_words_json     TEXT COMMENT 'JSON list of mispronounced words',
+    scored_at            DATETIME,
+    scoring_provider     VARCHAR(20),
+    created_at           DATETIME     DEFAULT CURRENT_TIMESTAMP,
+    updated_at           DATETIME     DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    deleted              TINYINT(1)   DEFAULT 0,
+    INDEX idx_item_id (item_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE notify_message (
     id              BIGINT AUTO_INCREMENT PRIMARY KEY,

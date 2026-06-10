@@ -136,4 +136,23 @@ public class TodoController {
             Authentication auth) {
         return ApiResponse.success(todoService.getSchoolTaskStats(schoolId));
     }
+
+    @PostMapping("/item/{itemId}/review")
+    @PreAuthorize("hasAnyRole('TEACHER', 'EDU_OFFICE')")
+    public ApiResponse<TodoItemDTO> teacherReview(
+            @PathVariable("itemId") Long itemId,
+            @RequestParam(required = false) Double score,
+            @RequestParam(required = false) String feedback,
+            @RequestParam(value = "audioFile", required = false) MultipartFile audioFile,
+            Authentication auth) {
+        Long teacherId = (Long) auth.getPrincipal();
+        return ApiResponse.success(todoService.teacherReview(itemId, teacherId, score, feedback, audioFile));
+    }
+
+    @GetMapping("/item/{itemId}/score")
+    public ApiResponse<SpeechScoreResult> getScoreDetail(
+            @PathVariable("itemId") Long itemId,
+            Authentication auth) {
+        return ApiResponse.success(todoService.getScoreDetail(itemId));
+    }
 }

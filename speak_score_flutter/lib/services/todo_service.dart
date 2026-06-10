@@ -1,3 +1,4 @@
+import 'package:speak_score_flutter/models/speech_score_result.dart';
 import 'package:speak_score_flutter/models/todo_info.dart';
 import 'package:speak_score_flutter/services/api_client.dart';
 
@@ -186,6 +187,45 @@ class TodoService {
         fieldName: 'audioFile',
         extraFields: {'duration': durationInSeconds},
       );
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<SpeechScoreResult?> getScoreDetail(int itemId) async {
+    try {
+      final res = await _apiClient.get('/todos/item/$itemId/score');
+      if (res.data != null) {
+        return SpeechScoreResult.fromJson(res.data as Map<String, dynamic>);
+      }
+      return null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<bool> teacherReview(int itemId, double? score, String? feedback,
+      {String? audioFilePath}) async {
+    try {
+      if (audioFilePath != null) {
+        await _apiClient.upload(
+          '/todos/item/$itemId/review',
+          filePath: audioFilePath,
+          fileName: 'teacher_review.aac',
+          fieldName: 'audioFile',
+          extraFields: {
+            if (score != null) 'score': score.toString(),
+            if (feedback != null) 'feedback': feedback,
+          },
+        );
+      } else {
+        final formData = {
+          if (score != null) 'score': score.toString(),
+          if (feedback != null) 'feedback': feedback,
+        };
+        await _apiClient.post('/todos/item/$itemId/review', data: formData);
+      }
       return true;
     } catch (_) {
       return false;

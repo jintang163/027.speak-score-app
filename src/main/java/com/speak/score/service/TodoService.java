@@ -1,10 +1,13 @@
 package com.speak.score.service;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.speak.score.dto.*;
 import com.speak.score.entity.*;
 import com.speak.score.exception.BusinessException;
 import com.speak.score.repository.ClassMemberRepository;
 import com.speak.score.repository.MaterialRepository;
+import com.speak.score.repository.SpeechScoreDetailRepository;
 import com.speak.score.repository.TodoItemRepository;
 import com.speak.score.repository.TodoTaskRepository;
 import lombok.RequiredArgsConstructor;
@@ -22,6 +25,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -36,9 +40,12 @@ public class TodoService {
     private final MaterialRepository materialRepository;
     private final NotificationService notificationService;
     private final OssService ossService;
+    private final SpeechScoreDetailRepository speechScoreDetailRepository;
 
     @Autowired(required = false)
     private RocketMQProducerService rocketMQProducerService;
+
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Transactional
     public TodoTaskDTO createTodo(Long creatorId, TodoCreateRequest request) {
@@ -480,5 +487,83 @@ public class TodoService {
         dto.setAverageScore(avgScore != null ? Math.round(avgScore * 100.0) / 100.0 : null);
 
         return dto;
+    }
+
+    @Transactional
+    public TodoItemDTO teacherReview(Long itemId, Long teacherId, Double score, String feedback, MultipartFile audioFile) {
+        TodoItem item = todoItemRepository.findById(itemId)
+                .orElseThrow(() -> new BusinessException("Todo item not found"));
+
+        if (item.getStatus() != TodoItemStatus.NEEDS_REVIEW
+                && item.getStatus() != TodoItemStatus.COMPLETED
+                && item.getStatus() != TodoItemStatus.PENDING_SCORE) {
+            throw new BusinessException("当前状态不允许教师评阅");
+        }
+
+        if (audioFile != null && !audioFile.isEmpty()) {
+            String teacherAudioUrl = ossService.uploadFile(audioFile, "teacher-review-audio");
+            item.setTeacherAudioUrl(teacherAudioUrl);
+        }
+
+        item.setTeacherScore(score);
+        item.setTeacherFeedback(feedback);
+        item.setTeacherId(teacherId);
+        item.setTeacherReviewedAt(LocalDateTime.now());
+        if (score != null) {
+            item.setScore(score);
+        }
+        item.setStatus(TodoItemStatus.COMPLETED);
+        item.setNeedsManualReview(false);
+
+        TodoItem savedItem = todoItemRepository.save(item);
+
+        TodoTask task = todoTaskRepository.findById(savedItem.getTaskId()).orElse(null);
+        if (task != null) {
+            notificationService.sendNotification(
+                    teacherId, savedItem.getUserId(),
+                    "教师已评阅您的打卡：" + task.getTitle(),
+                    feedback,
+                    MsgType.TODO, savedItem.getTaskId(), "TODO_TASK"
+            );
+        }
+
+        return TodoItemDTO.fromEntity(savedItem);
+    }
+
+    public SpeechScoreResult getScoreDetail(Long itemId) {
+        SpeechScoreDetail detail = speechScoreDetailRepository.findTopByItemIdOrderByScoredAtDesc(itemId)
+                .orElse(null);
+
+        if (detail == null) {
+            SpeechScoreResult result = new SpeechScoreResult();
+            result.setSuccess(false);
+            result.setErrorMessage("暂无评分详情");
+            return result;
+        }
+
+        SpeechScoreResult result = new SpeechScoreResult();
+        result.setOverallScore(detail.getOverallScore());
+        result.setPronunciationScore(detail.getPronunciationScore());
+        result.setFluencyScore(detail.getFluencyScore());
+        result.setCompletenessScore(detail.getCompletenessScore());
+        result.setAccuracyScore(detail.getAccuracyScore());
+        result.setSuccess(true);
+
+        if (detail.getErrorWordsJson() != null && !detail.getErrorWordsJson().isEmpty()) {
+            try {
+                List<SpeechScoreResult.ErrorWord> errorWords = objectMapper.readValue(
+                        detail.getErrorWordsJson(),
+                        new TypeReference<List<SpeechScoreResult.ErrorWord>>() {}
+                );
+                result.setErrorWords(errorWords);
+            } catch (Exception e) {
+                log.warn("Failed to parse error words JSON for itemId: {}", itemId, e);
+                result.setErrorWords(Collections.emptyList());
+            }
+        } else {
+            result.setErrorWords(Collections.emptyList());
+        }
+
+        return result;
     }
 }

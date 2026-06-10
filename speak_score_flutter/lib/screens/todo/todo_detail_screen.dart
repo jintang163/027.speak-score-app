@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:speak_score_flutter/models/todo_info.dart';
 import 'package:speak_score_flutter/screens/todo/checkin_screen.dart';
+import 'package:speak_score_flutter/screens/todo/score_detail_screen.dart';
+import 'package:speak_score_flutter/screens/todo/teacher_review_screen.dart';
 import 'package:speak_score_flutter/services/auth_service.dart';
 import 'package:speak_score_flutter/services/todo_service.dart';
 
@@ -339,6 +341,35 @@ class _TodoDetailScreenState extends State<TodoDetailScreen> {
     );
   }
 
+  Future<void> _navigateToScoreDetail(TodoItem item) async {
+    await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (_) => ScoreDetailScreen(
+          itemId: item.id!,
+          audioUrl: item.audioUrl,
+          referenceText: _todo?.referenceText,
+          item: item,
+        ),
+      ),
+    );
+  }
+
+  Future<void> _navigateToTeacherReview(TodoItem item) async {
+    final result = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (_) => TeacherReviewScreen(
+          itemId: item.id!,
+          studentAudioUrl: item.audioUrl,
+          referenceText: _todo?.referenceText,
+          item: item,
+        ),
+      ),
+    );
+    if (result == true && mounted) {
+      _loadDetail();
+    }
+  }
+
   Widget _buildItemCard(TodoItem item) {
     Color statusColor;
     String statusLabel;
@@ -349,6 +380,9 @@ class _TodoDetailScreenState extends State<TodoDetailScreen> {
       case 'PENDING_SCORE':
         statusColor = Colors.orange;
         statusLabel = '待评分';
+      case 'NEEDS_REVIEW':
+        statusColor = Colors.red;
+        statusLabel = '待批改';
       case 'CANCELLED':
         statusColor = Colors.grey;
         statusLabel = '已取消';
@@ -360,53 +394,108 @@ class _TodoDetailScreenState extends State<TodoDetailScreen> {
         statusLabel = '待办';
     }
 
+    final canViewScore =
+        item.status == 'COMPLETED' || item.status == 'PENDING_SCORE';
+    final canReview = item.status == 'NEEDS_REVIEW' && _isCreator;
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
-      child: Row(
-        children: [
-          CircleAvatar(
-            radius: 16,
-            backgroundColor: statusColor.withValues(alpha: 0.1),
-            child: Icon(
-              item.status == 'COMPLETED'
-                  ? Icons.check
-                  : Icons.person_outline,
-              size: 16,
-              color: statusColor,
-            ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: canViewScore
+              ? () => _navigateToScoreDetail(item)
+              : canReview
+                  ? () => _navigateToTeacherReview(item)
+                  : null,
+          borderRadius: BorderRadius.circular(8),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 4),
+            child: Row(
               children: [
-                Text(item.userName ?? '-',
-                    style: const TextStyle(
-                        fontSize: 14, fontWeight: FontWeight.w500)),
-                if (item.feedback != null &&
-                    item.feedback!.isNotEmpty)
-                  Text(item.feedback!,
+                CircleAvatar(
+                  radius: 16,
+                  backgroundColor: statusColor.withValues(alpha: 0.1),
+                  child: Icon(
+                    item.status == 'COMPLETED'
+                        ? Icons.check
+                        : Icons.person_outline,
+                    size: 16,
+                    color: statusColor,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Text(item.userName ?? '-',
+                              style: const TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w500)),
+                          if (item.status == 'NEEDS_REVIEW') ...[
+                            const SizedBox(width: 6),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: Colors.red.withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: const Text('待批改',
+                                  style: TextStyle(
+                                      color: Colors.red,
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w600)),
+                            ),
+                          ],
+                        ],
+                      ),
+                      if (item.score != null)
+                        Text('AI评分: ${item.score!.toStringAsFixed(0)}',
+                            style: TextStyle(
+                                fontSize: 12, color: Colors.amber[700])),
+                      if (item.teacherScore != null)
+                        Text(
+                            '教师评分: ${item.teacherScore!.toStringAsFixed(0)}',
+                            style: TextStyle(
+                                fontSize: 12, color: Colors.purple[700])),
+                      if (item.feedback != null && item.feedback!.isNotEmpty)
+                        Text(item.feedback!,
+                            style: TextStyle(
+                                fontSize: 12, color: Colors.grey[600]),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis),
+                    ],
+                  ),
+                ),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: statusColor.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(statusLabel,
                       style: TextStyle(
-                          fontSize: 12, color: Colors.grey[600]),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis),
+                          color: statusColor,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600)),
+                ),
+                if (canViewScore || canReview) ...[
+                  const SizedBox(width: 4),
+                  Icon(
+                    canReview ? Icons.rate_review : Icons.visibility,
+                    size: 16,
+                    color: Colors.grey[500],
+                  ),
+                ],
               ],
             ),
           ),
-          Container(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-            decoration: BoxDecoration(
-              color: statusColor.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Text(statusLabel,
-                style: TextStyle(
-                    color: statusColor,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600)),
-          ),
-        ],
+        ),
       ),
     );
   }

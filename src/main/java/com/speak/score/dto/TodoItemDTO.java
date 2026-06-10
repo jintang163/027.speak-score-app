@@ -23,6 +23,13 @@ public class TodoItemDTO {
     private Integer duration;
     private String completedAt;
     private String createdAt;
+    private Double teacherScore;
+    private String teacherFeedback;
+    private String teacherAudioUrl;
+    private String teacherName;
+    private String teacherReviewedAt;
+    private Boolean needsManualReview;
+    private Integer retryCount;
 
     private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
@@ -42,6 +49,13 @@ public class TodoItemDTO {
         dto.setDuration(item.getDuration());
         dto.setCompletedAt(item.getCompletedAt() != null ? item.getCompletedAt().format(FORMATTER) : null);
         dto.setCreatedAt(item.getCreatedAt() != null ? item.getCreatedAt().format(FORMATTER) : null);
+        dto.setTeacherScore(item.getTeacherScore());
+        dto.setTeacherFeedback(item.getTeacherFeedback());
+        dto.setTeacherAudioUrl(item.getTeacherAudioUrl());
+        dto.setTeacherName(null);
+        dto.setTeacherReviewedAt(item.getTeacherReviewedAt() != null ? item.getTeacherReviewedAt().format(FORMATTER) : null);
+        dto.setNeedsManualReview(item.getNeedsManualReview());
+        dto.setRetryCount(item.getRetryCount());
         return dto;
     }
 }
