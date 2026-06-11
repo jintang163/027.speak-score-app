@@ -8,13 +8,17 @@ import 'package:speak_score_flutter/screens/student/student_task_screen.dart';
 import 'package:speak_score_flutter/screens/student/student_record_screen.dart';
 import 'package:speak_score_flutter/screens/student/student_ranking_screen.dart';
 import 'package:speak_score_flutter/screens/student/student_profile_screen.dart';
+import 'package:speak_score_flutter/screens/student/student_calendar_screen.dart';
 import 'package:speak_score_flutter/screens/teacher/teacher_task_screen.dart';
 import 'package:speak_score_flutter/screens/teacher/teacher_students_screen.dart';
 import 'package:speak_score_flutter/screens/teacher/teacher_ranking_screen.dart';
 import 'package:speak_score_flutter/screens/teacher/teacher_profile_screen.dart';
+import 'package:speak_score_flutter/screens/teacher/teacher_class_report_screen.dart';
+import 'package:speak_score_flutter/screens/teacher/student_progress_screen.dart';
 import 'package:speak_score_flutter/screens/edu_office/edu_office_school_screen.dart';
 import 'package:speak_score_flutter/screens/edu_office/edu_office_ranking_screen.dart';
 import 'package:speak_score_flutter/screens/edu_office/edu_office_profile_screen.dart';
+import 'package:speak_score_flutter/screens/edu_office/edu_office_class_comparison_screen.dart';
 import 'package:speak_score_flutter/screens/material/material_list_screen.dart';
 import 'package:speak_score_flutter/screens/notification/notification_list_screen.dart';
 import 'package:speak_score_flutter/screens/todo/todo_create_screen.dart';
@@ -427,6 +431,39 @@ class _HomeScreenState extends State<HomeScreen> {
               ).then((_) => _loadUnreadCount());
             },
           ),
+          if (_primaryRole == 'STUDENT')
+            ListTile(
+              leading: const Icon(Icons.calendar_today),
+              title: const Text('作业日历'),
+              onTap: () {
+                Navigator.of(context).pop();
+                Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const StudentCalendarScreen()),
+                );
+              },
+            ),
+          if (_primaryRole == 'TEACHER')
+            ListTile(
+              leading: const Icon(Icons.bar_chart),
+              title: const Text('成绩统计'),
+              onTap: () {
+                Navigator.of(context).pop();
+                Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const TeacherClassReportScreen()),
+                );
+              },
+            ),
+          if (_primaryRole == 'EDU_OFFICE')
+            ListTile(
+              leading: const Icon(Icons.equalizer),
+              title: const Text('班级对比'),
+              onTap: () {
+                Navigator.of(context).pop();
+                Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const EduOfficeClassComparisonScreen()),
+                );
+              },
+            ),
           ListTile(
             leading: const Icon(Icons.settings),
             title: const Text('设置'),

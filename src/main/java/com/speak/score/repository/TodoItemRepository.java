@@ -9,6 +9,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -38,4 +39,66 @@ public interface TodoItemRepository extends JpaRepository<TodoItem, Long> {
     Optional<TodoItem> findByTaskIdAndUserIdAndStatusAndDeletedFalse(Long taskId, Long userId, TodoItemStatus status);
 
     List<TodoItem> findByUserIdAndDeletedFalseOrderByCompletedAtDesc(Long userId);
+
+    @Query("SELECT ti FROM TodoItem ti WHERE ti.userId = :userId AND ti.completedAt IS NOT NULL " +
+            "AND ti.completedAt >= :startTime AND ti.completedAt <= :endTime AND ti.deleted = false " +
+            "ORDER BY ti.completedAt ASC")
+    List<TodoItem> findByUserIdAndCompletedAtBetweenAndDeletedFalse(
+            @Param("userId") Long userId,
+            @Param("startTime") LocalDateTime startTime,
+            @Param("endTime") LocalDateTime endTime);
+
+    @Query("SELECT ti FROM TodoItem ti WHERE ti.taskId IN :taskIds AND ti.status = :status AND ti.deleted = false")
+    List<TodoItem> findByTaskIdInAndStatusAndDeletedFalse(
+            @Param("taskIds") List<Long> taskIds,
+            @Param("status") TodoItemStatus status);
+
+    @Query("SELECT COUNT(DISTINCT ti.userId) FROM TodoItem ti WHERE ti.taskId IN :taskIds AND ti.status = :status AND ti.deleted = false")
+    long countDistinctUserIdByTaskIdInAndStatusAndDeletedFalse(
+            @Param("taskIds") List<Long> taskIds,
+            @Param("status") TodoItemStatus status);
+
+    @Query("SELECT AVG(ti.score) FROM TodoItem ti WHERE ti.taskId IN :taskIds AND ti.status = :status " +
+            "AND ti.score IS NOT NULL AND ti.deleted = false")
+    Double findAverageScoreByTaskIdInAndStatusAndDeletedFalse(
+            @Param("taskIds") List<Long> taskIds,
+            @Param("status") TodoItemStatus status);
+
+    @Query("SELECT MAX(ti.score) FROM TodoItem ti WHERE ti.taskId IN :taskIds AND ti.status = :status " +
+            "AND ti.score IS NOT NULL AND ti.deleted = false")
+    Double findMaxScoreByTaskIdInAndStatusAndDeletedFalse(
+            @Param("taskIds") List<Long> taskIds,
+            @Param("status") TodoItemStatus status);
+
+    @Query("SELECT MIN(ti.score) FROM TodoItem ti WHERE ti.taskId IN :taskIds AND ti.status = :status " +
+            "AND ti.score IS NOT NULL AND ti.deleted = false")
+    Double findMinScoreByTaskIdInAndStatusAndDeletedFalse(
+            @Param("taskIds") List<Long> taskIds,
+            @Param("status") TodoItemStatus status);
+
+    @Query("SELECT ti.userId, AVG(ti.score) FROM TodoItem ti WHERE ti.taskId IN :taskIds " +
+            "AND ti.status = :status AND ti.score IS NOT NULL AND ti.deleted = false " +
+            "GROUP BY ti.userId")
+    List<Object[]> findAverageScoreByTaskIdInAndStatusGroupByUserId(
+            @Param("taskIds") List<Long> taskIds,
+            @Param("status") TodoItemStatus status);
+
+    @Query("SELECT ti.userId, ti.score, ti.completedAt FROM TodoItem ti " +
+            "WHERE ti.userId = :userId AND ti.status = :status AND ti.score IS NOT NULL " +
+            "AND ti.completedAt IS NOT NULL AND ti.deleted = false " +
+            "ORDER BY ti.completedAt ASC")
+    List<Object[]> findScoreHistoryByUserIdAndStatus(
+            @Param("userId") Long userId,
+            @Param("status") TodoItemStatus status);
+
+    @Query("SELECT ti.userId, AVG(ti.score), MAX(ti.score), MIN(ti.score), COUNT(ti) " +
+            "FROM TodoItem ti WHERE ti.taskId IN :taskIds AND ti.status = :status " +
+            "AND ti.deleted = false GROUP BY ti.userId")
+    List<Object[]> findStudentStatsByTaskIdInAndStatus(
+            @Param("taskIds") List<Long> taskIds,
+            @Param("status") TodoItemStatus status);
+
+    @Query("SELECT COUNT(DISTINCT ti.userId) FROM TodoItem ti " +
+            "WHERE ti.taskId IN :taskIds AND ti.deleted = false")
+    long countDistinctUsersByTaskIdIn(@Param("taskIds") List<Long> taskIds);
 }

@@ -106,4 +106,18 @@ class OrganizationService {
       rethrow;
     }
   }
+
+  Future<List<UserInfo>> getStudentsByClass(int classId) async {
+    try {
+      final response =
+          await _apiClient.get('/teacher/students/class/$classId');
+      final data = response.data['data'] ?? response.data;
+      final list = data is List ? data : <dynamic>[];
+      return list
+          .map((e) => UserInfo.fromJson(e as Map<String, dynamic>))
+          .toList();
+    } catch (e) {
+      rethrow;
+    }
+  }
 }

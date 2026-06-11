@@ -1,5 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:path_provider/path_provider.dart';
+import 'dart:io';
 import '../config/api_config.dart';
 
 class ApiClient {
@@ -164,5 +166,23 @@ class ApiClient {
       options: Options(contentType: 'multipart/form-data'),
       onSendProgress: onSendProgress,
     );
+  }
+
+  Future<String> download(
+    String path, {
+    Map<String, dynamic>? queryParameters,
+    String? savePath,
+  }) async {
+    final directory = await getTemporaryDirectory();
+    final fileName = savePath ?? 'download_${DateTime.now().millisecondsSinceEpoch}.xlsx';
+    final fullPath = '${directory.path}/$fileName';
+
+    await _dio.download(
+      path,
+      fullPath,
+      queryParameters: queryParameters,
+    );
+
+    return fullPath;
   }
 }
