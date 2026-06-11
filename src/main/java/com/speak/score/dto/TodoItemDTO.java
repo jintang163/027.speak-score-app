@@ -31,6 +31,9 @@ public class TodoItemDTO {
     private Boolean needsManualReview;
     private Integer retryCount;
 
+    private String taskTitle;
+    private String referenceText;
+
     private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     public static TodoItemDTO fromEntity(TodoItem item) {

@@ -27,8 +27,10 @@ public class ReportController {
             @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate startDate,
             @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate endDate,
             Authentication auth) {
-        Long userId = studentId != null ? studentId : (Long) auth.getPrincipal();
-        return ApiResponse.success(reportService.getStudentCalendar(userId, startDate, endDate));
+        Long currentUserId = (Long) auth.getPrincipal();
+        Long targetStudentId = studentId != null ? studentId : currentUserId;
+        reportService.validateStudentAccess(currentUserId, targetStudentId);
+        return ApiResponse.success(reportService.getStudentCalendar(targetStudentId, startDate, endDate));
     }
 
     @GetMapping("/student/progress")
@@ -37,8 +39,10 @@ public class ReportController {
             @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate startDate,
             @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate endDate,
             Authentication auth) {
-        Long userId = studentId != null ? studentId : (Long) auth.getPrincipal();
-        return ApiResponse.success(reportService.getStudentProgress(userId, startDate, endDate));
+        Long currentUserId = (Long) auth.getPrincipal();
+        Long targetStudentId = studentId != null ? studentId : currentUserId;
+        reportService.validateStudentAccess(currentUserId, targetStudentId);
+        return ApiResponse.success(reportService.getStudentProgress(targetStudentId, startDate, endDate));
     }
 
     @GetMapping("/class/{classId}/overview")
@@ -46,7 +50,10 @@ public class ReportController {
     public ApiResponse<ClassReportDTO> getClassReport(
             @PathVariable Long classId,
             @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate startDate,
-            @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate endDate) {
+            @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate endDate,
+            Authentication auth) {
+        Long currentUserId = (Long) auth.getPrincipal();
+        reportService.validateClassAccess(currentUserId, classId);
         return ApiResponse.success(reportService.getClassReport(classId, startDate, endDate));
     }
 
@@ -65,7 +72,10 @@ public class ReportController {
     public ResponseEntity<byte[]> exportClassReport(
             @PathVariable Long classId,
             @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate startDate,
-            @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate endDate) {
+            @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate endDate,
+            Authentication auth) {
+        Long currentUserId = (Long) auth.getPrincipal();
+        reportService.validateClassAccess(currentUserId, classId);
         byte[] excelData = reportService.exportClassReport(classId, startDate, endDate);
 
         String fileName = "homework_report_" + classId + "_" + startDate + "_" + endDate + ".xlsx";
@@ -87,7 +97,10 @@ public class ReportController {
             @PathVariable Long classId,
             @RequestParam String email,
             @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate startDate,
-            @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate endDate) {
+            @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate endDate,
+            Authentication auth) {
+        Long currentUserId = (Long) auth.getPrincipal();
+        reportService.validateClassAccess(currentUserId, classId);
         boolean result = reportService.sendReportByEmail(classId, email, startDate, endDate);
         return ApiResponse.success(result);
     }

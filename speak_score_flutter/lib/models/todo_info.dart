@@ -239,6 +239,8 @@ class TodoItem {
   final String? teacherAudioUrl;
   final bool? needsManualReview;
   final int? retryCount;
+  final String? taskTitle;
+  final String? referenceText;
 
   const TodoItem({
     this.id,
@@ -257,6 +259,8 @@ class TodoItem {
     this.teacherAudioUrl,
     this.needsManualReview,
     this.retryCount,
+    this.taskTitle,
+    this.referenceText,
   });
 
   factory TodoItem.fromJson(Map<String, dynamic> json) {
@@ -277,6 +281,8 @@ class TodoItem {
       teacherAudioUrl: json['teacherAudioUrl'] as String?,
       needsManualReview: json['needsManualReview'] as bool?,
       retryCount: json['retryCount'] as int?,
+      taskTitle: json['taskTitle'] as String?,
+      referenceText: json['referenceText'] as String?,
     );
   }
 
@@ -297,6 +303,8 @@ class TodoItem {
         'teacherAudioUrl': teacherAudioUrl,
         'needsManualReview': needsManualReview,
         'retryCount': retryCount,
+        'taskTitle': taskTitle,
+        'referenceText': referenceText,
       };
 }
 

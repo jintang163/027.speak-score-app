@@ -155,4 +155,11 @@ public class TodoController {
             Authentication auth) {
         return ApiResponse.success(todoService.getScoreDetail(itemId));
     }
+
+    @GetMapping("/item/{itemId}")
+    public ApiResponse<TodoItemDTO> getItemDetail(
+            @PathVariable("itemId") Long itemId,
+            Authentication auth) {
+        return ApiResponse.success(todoService.getItemDetail(itemId));
+    }
 }

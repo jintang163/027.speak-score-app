@@ -30,4 +30,10 @@ public interface ClassMemberRepository extends JpaRepository<ClassMember, Long> 
 
     @Query("SELECT cm FROM ClassMember cm WHERE cm.classEntity.id = :classId AND cm.roleCode = :roleCode AND cm.status = 1 AND cm.deleted = false")
     List<ClassMember> findByClassIdAndRoleCodeAndStatusAndDeletedFalse(@Param("classId") Long classId, @Param("roleCode") RoleEnum roleCode);
+
+    @Query("SELECT COUNT(cm) > 0 FROM ClassMember cm WHERE cm.classEntity.id IN :classIds AND cm.user.id = :userId AND cm.roleCode = :roleCode AND cm.status = 1 AND cm.deleted = false")
+    boolean existsByClassIdInAndUserIdAndRoleCodeAndDeletedFalse(
+            @Param("classIds") List<Long> classIds,
+            @Param("userId") Long userId,
+            @Param("roleCode") RoleEnum roleCode);
 }

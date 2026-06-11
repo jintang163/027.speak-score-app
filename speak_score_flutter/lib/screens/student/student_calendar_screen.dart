@@ -245,7 +245,7 @@ class _StudentCalendarScreenState extends State<StudentCalendarScreen> {
           final dayKey = DateTime(day.year, day.month, day.day);
           final dayData = _dayMap[dayKey];
 
-          if (dayData == null) {
+          if (dayData == null || dayData.status == 'NONE') {
             return Center(
               child: Text(
                 '${day.day}',
@@ -258,6 +258,7 @@ class _StudentCalendarScreenState extends State<StudentCalendarScreen> {
           final isHighScore = status == 'HIGH_SCORE';
           final isCompleted = status == 'COMPLETED' || isHighScore;
           final isMissed = status == 'MISSED';
+          final isPending = status == 'PENDING';
 
           Color bgColor = Colors.transparent;
           Color textColor = Colors.black87;
@@ -268,6 +269,9 @@ class _StudentCalendarScreenState extends State<StudentCalendarScreen> {
           } else if (isMissed) {
             bgColor = Colors.red.withOpacity(0.2);
             textColor = Colors.red[700]!;
+          } else if (isPending) {
+            bgColor = Colors.orange.withOpacity(0.1);
+            textColor = Colors.orange[700]!;
           }
 
           return Container(
@@ -297,6 +301,16 @@ class _StudentCalendarScreenState extends State<StudentCalendarScreen> {
                       color: Colors.amber[700],
                     ),
                   ),
+                if (isPending)
+                  Positioned(
+                    top: 2,
+                    right: 2,
+                    child: Icon(
+                      Icons.schedule,
+                      size: 12,
+                      color: Colors.orange[700],
+                    ),
+                  ),
               ],
             ),
           );
@@ -317,7 +331,7 @@ class _StudentCalendarScreenState extends State<StudentCalendarScreen> {
     );
     final dayData = _dayMap[dayKey];
 
-    if (dayData == null) {
+    if (dayData == null || dayData.status == 'NONE') {
       return Expanded(
         child: Center(
           child: Column(
@@ -338,6 +352,26 @@ class _StudentCalendarScreenState extends State<StudentCalendarScreen> {
     final status = dayData.status;
     final isHighScore = status == 'HIGH_SCORE';
     final isCompleted = status == 'COMPLETED' || isHighScore;
+    final isMissed = status == 'MISSED';
+    final isPending = status == 'PENDING';
+
+    IconData statusIcon;
+    Color statusColor;
+    String statusText;
+
+    if (isCompleted) {
+      statusIcon = Icons.check_circle;
+      statusColor = Colors.green;
+      statusText = isHighScore ? '优秀完成 ⭐' : '已完成';
+    } else if (isMissed) {
+      statusIcon = Icons.cancel;
+      statusColor = Colors.red;
+      statusText = '已缺卡';
+    } else {
+      statusIcon = Icons.schedule;
+      statusColor = Colors.orange;
+      statusText = '待完成';
+    }
 
     return Expanded(
       child: SingleChildScrollView(
@@ -351,8 +385,8 @@ class _StudentCalendarScreenState extends State<StudentCalendarScreen> {
                 Row(
                   children: [
                     Icon(
-                      isCompleted ? Icons.check_circle : Icons.cancel,
-                      color: isCompleted ? Colors.green : Colors.red,
+                      statusIcon,
+                      color: statusColor,
                       size: 24,
                     ),
                     const SizedBox(width: 12),
@@ -369,14 +403,10 @@ class _StudentCalendarScreenState extends State<StudentCalendarScreen> {
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            isCompleted
-                                ? (isHighScore ? '优秀完成 ⭐' : '已完成')
-                                : '未完成',
+                            statusText,
                             style: TextStyle(
                               fontSize: 13,
-                              color: isCompleted
-                                  ? (isHighScore ? Colors.amber[700] : Colors.green)
-                                  : Colors.red,
+                              color: statusColor,
                               fontWeight: FontWeight.w500,
                             ),
                           ),
@@ -426,9 +456,6 @@ class _StudentCalendarScreenState extends State<StudentCalendarScreen> {
                           MaterialPageRoute(
                             builder: (_) => ScoreDetailScreen(
                               itemId: dayData.itemId!,
-                              audioUrl: null,
-                              referenceText: null,
-                              item: null,
                             ),
                           ),
                         );

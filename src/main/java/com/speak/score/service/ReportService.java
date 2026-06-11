@@ -37,6 +37,73 @@ public class ReportService {
     private final NotificationConfig notificationConfig;
     private final JavaMailSender javaMailSender;
 
+    public void validateStudentAccess(Long currentUserId, Long targetStudentId) {
+        if (currentUserId.equals(targetStudentId)) {
+            return;
+        }
+
+        User currentUser = userRepository.findById(currentUserId)
+                .orElseThrow(() -> new BusinessException("用户不存在"));
+
+        boolean isTeacher = currentUser.getRoles().stream()
+                .anyMatch(r -> r.getRoleCode() == RoleEnum.TEACHER);
+        boolean isEduOffice = currentUser.getRoles().stream()
+                .anyMatch(r -> r.getRoleCode() == RoleEnum.EDU_OFFICE);
+
+        if (isEduOffice) {
+            return;
+        }
+
+        if (isTeacher) {
+            List<ClassEntity> teacherClasses = classRepository.findByTeacherId(currentUserId);
+            List<Long> classIds = teacherClasses.stream()
+                    .map(ClassEntity::getId)
+                    .collect(Collectors.toList());
+
+            if (classIds.isEmpty()) {
+                throw new BusinessException("无权访问该学生数据");
+            }
+
+            boolean isStudentInClass = classMemberRepository.existsByClassIdInAndUserIdAndRoleCodeAndDeletedFalse(
+                    classIds, targetStudentId, RoleEnum.STUDENT);
+
+            if (!isStudentInClass) {
+                throw new BusinessException("无权访问该学生数据");
+            }
+            return;
+        }
+
+        throw new BusinessException("无权访问该学生数据");
+    }
+
+    public void validateClassAccess(Long currentUserId, Long classId) {
+        User currentUser = userRepository.findById(currentUserId)
+                .orElseThrow(() -> new BusinessException("用户不存在"));
+
+        boolean isEduOffice = currentUser.getRoles().stream()
+                .anyMatch(r -> r.getRoleCode() == RoleEnum.EDU_OFFICE);
+
+        if (isEduOffice) {
+            return;
+        }
+
+        boolean isTeacher = currentUser.getRoles().stream()
+                .anyMatch(r -> r.getRoleCode() == RoleEnum.TEACHER);
+
+        if (isTeacher) {
+            List<ClassEntity> teacherClasses = classRepository.findByTeacherId(currentUserId);
+            boolean hasAccess = teacherClasses.stream()
+                    .anyMatch(c -> c.getId().equals(classId));
+
+            if (!hasAccess) {
+                throw new BusinessException("无权访问该班级数据");
+            }
+            return;
+        }
+
+        throw new BusinessException("无权访问该班级数据");
+    }
+
     public StudentCalendarDTO getStudentCalendar(Long studentId, LocalDate startDate, LocalDate endDate) {
         User student = userRepository.findById(studentId)
                 .orElseThrow(() -> new BusinessException("学生不存在"));
@@ -44,62 +111,101 @@ public class ReportService {
         LocalDateTime startTime = startDate.atStartOfDay();
         LocalDateTime endTime = endDate.atTime(LocalTime.MAX);
 
-        List<TodoItem> items = todoItemRepository
-                .findByUserIdAndCompletedAtBetweenAndDeletedFalse(studentId, startTime, endTime);
+        List<TodoItem> allItems = todoItemRepository.findByUserIdAndDeletedFalseOrderByCompletedAtDesc(studentId);
 
-        Map<LocalDate, List<TodoItem>> itemsByDate = items.stream()
-                .filter(item -> item.getCompletedAt() != null)
-                .collect(Collectors.groupingBy(item -> item.getCompletedAt().toLocalDate()));
+        List<Long> taskIds = allItems.stream()
+                .map(TodoItem::getTaskId)
+                .filter(Objects::nonNull)
+                .distinct()
+                .collect(Collectors.toList());
+
+        Map<Long, TodoTask> taskMap = new HashMap<>();
+        if (!taskIds.isEmpty()) {
+            List<TodoTask> tasks = todoTaskRepository.findAllById(taskIds);
+            for (TodoTask task : tasks) {
+                taskMap.put(task.getId(), task);
+            }
+        }
+
+        Map<LocalDate, List<TodoItem>> itemsByDeadline = new HashMap<>();
+        for (TodoItem item : allItems) {
+            TodoTask task = taskMap.get(item.getTaskId());
+            if (task == null || task.getDeadline() == null) {
+                continue;
+            }
+            LocalDate deadlineDate = task.getDeadline().toLocalDate();
+            if (deadlineDate.isBefore(startDate) || deadlineDate.isAfter(endDate)) {
+                continue;
+            }
+            itemsByDeadline.computeIfAbsent(deadlineDate, k -> new ArrayList<>()).add(item);
+        }
 
         List<StudentCalendarDayDTO> dayList = new ArrayList<>();
         int checkedDays = 0;
         int highScoreDays = 0;
+        int missedDays = 0;
         double totalScore = 0;
         int scoredDays = 0;
+
+        LocalDate today = LocalDate.now();
 
         for (LocalDate date = startDate; !date.isAfter(endDate); date = date.plusDays(1)) {
             StudentCalendarDayDTO dayDTO = new StudentCalendarDayDTO();
             dayDTO.setDate(date.toString());
 
-            List<TodoItem> dayItems = itemsByDate.getOrDefault(date, Collections.emptyList());
-            int completedCount = dayItems.size();
+            List<TodoItem> dayItems = itemsByDeadline.getOrDefault(date, Collections.emptyList());
+            int taskCount = dayItems.size();
+            long completedCount = dayItems.stream()
+                    .filter(item -> item.getStatus() == TodoItemStatus.COMPLETED)
+                    .count();
 
-            dayDTO.setTaskCount(completedCount);
-            dayDTO.setCompletedCount(completedCount);
+            dayDTO.setTaskCount(taskCount);
+            dayDTO.setCompletedCount((int) completedCount);
 
-            if (completedCount > 0) {
-                checkedDays++;
-                TodoItem firstItem = dayItems.get(0);
-                dayDTO.setItemId(firstItem.getId());
+            if (taskCount > 0) {
+                if (completedCount == taskCount) {
+                    checkedDays++;
+                    TodoItem firstCompleted = dayItems.stream()
+                            .filter(item -> item.getStatus() == TodoItemStatus.COMPLETED)
+                            .findFirst()
+                            .orElse(null);
+                    if (firstCompleted != null) {
+                        dayDTO.setItemId(firstCompleted.getId());
+                    }
 
-                Double avgScore = dayItems.stream()
-                        .filter(item -> item.getScore() != null)
-                        .mapToDouble(TodoItem::getScore)
-                        .average()
-                        .orElse(0.0);
+                    Double avgScore = dayItems.stream()
+                            .filter(item -> item.getScore() != null)
+                            .mapToDouble(TodoItem::getScore)
+                            .average()
+                            .orElse(0.0);
 
-                dayDTO.setScore(avgScore > 0 ? Math.round(avgScore * 100.0) / 100.0 : null);
+                    dayDTO.setScore(avgScore > 0 ? Math.round(avgScore * 100.0) / 100.0 : null);
 
-                if (avgScore >= 90) {
-                    highScoreDays++;
-                    dayDTO.setStatus("HIGH_SCORE");
+                    if (avgScore >= 90) {
+                        highScoreDays++;
+                        dayDTO.setStatus("HIGH_SCORE");
+                    } else {
+                        dayDTO.setStatus("COMPLETED");
+                    }
+
+                    if (avgScore > 0) {
+                        totalScore += avgScore;
+                        scoredDays++;
+                    }
+                } else if (date.isBefore(today)) {
+                    missedDays++;
+                    dayDTO.setStatus("MISSED");
                 } else {
-                    dayDTO.setStatus("COMPLETED");
-                }
-
-                if (avgScore > 0) {
-                    totalScore += avgScore;
-                    scoredDays++;
+                    dayDTO.setStatus("PENDING");
                 }
             } else {
-                dayDTO.setStatus("MISSED");
+                dayDTO.setStatus("NONE");
             }
 
             dayList.add(dayDTO);
         }
 
         int totalDays = (int) (endDate.toEpochDay() - startDate.toEpochDay() + 1);
-        int missedDays = totalDays - checkedDays;
 
         StudentCalendarDTO result = new StudentCalendarDTO();
         result.setStudentId(studentId);

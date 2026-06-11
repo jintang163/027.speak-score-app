@@ -205,6 +205,19 @@ class TodoService {
     }
   }
 
+  Future<TodoItem?> getItemDetail(int itemId) async {
+    try {
+      final res = await _apiClient.get('/todos/item/$itemId');
+      final data = res.data['data'];
+      if (data != null) {
+        return TodoItem.fromJson(data as Map<String, dynamic>);
+      }
+      return null;
+    } catch (_) {
+      return null;
+    }
+  }
+
   Future<bool> teacherReview(int itemId, double? score, String? feedback,
       {String? audioFilePath}) async {
     try {

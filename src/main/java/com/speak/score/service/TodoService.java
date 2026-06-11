@@ -10,6 +10,7 @@ import com.speak.score.repository.MaterialRepository;
 import com.speak.score.repository.SpeechScoreDetailRepository;
 import com.speak.score.repository.TodoItemRepository;
 import com.speak.score.repository.TodoTaskRepository;
+import com.speak.score.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -41,6 +42,7 @@ public class TodoService {
     private final NotificationService notificationService;
     private final OssService ossService;
     private final SpeechScoreDetailRepository speechScoreDetailRepository;
+    private final UserRepository userRepository;
 
     @Autowired(required = false)
     private RocketMQProducerService rocketMQProducerService;
@@ -565,5 +567,33 @@ public class TodoService {
         }
 
         return result;
+    }
+
+    public TodoItemDTO getItemDetail(Long itemId) {
+        TodoItem item = todoItemRepository.findById(itemId)
+                .orElseThrow(() -> new BusinessException("打卡记录不存在"));
+
+        TodoItemDTO dto = TodoItemDTO.fromEntity(item);
+
+        if (item.getTaskId() != null) {
+            todoTaskRepository.findById(item.getTaskId()).ifPresent(task -> {
+                dto.setTaskTitle(task.getTitle());
+                dto.setReferenceText(task.getReferenceText());
+            });
+        }
+
+        if (item.getUserId() != null) {
+            userRepository.findById(item.getUserId()).ifPresent(user -> {
+                dto.setUserName(user.getRealName() != null ? user.getRealName() : user.getNickname());
+            });
+        }
+
+        if (item.getTeacherId() != null) {
+            userRepository.findById(item.getTeacherId()).ifPresent(user -> {
+                dto.setTeacherName(user.getRealName() != null ? user.getRealName() : user.getNickname());
+            });
+        }
+
+        return dto;
     }
 }

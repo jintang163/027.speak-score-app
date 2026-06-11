@@ -28,6 +28,7 @@ class _ScoreDetailScreenState extends State<ScoreDetailScreen> {
   final AudioPlayer _teacherAudioPlayer = AudioPlayer();
 
   SpeechScoreResult? _scoreResult;
+  TodoItem? _item;
   bool _isLoading = true;
   bool _isPlaying = false;
   bool _isTeacherPlaying = false;
@@ -35,7 +36,7 @@ class _ScoreDetailScreenState extends State<ScoreDetailScreen> {
   @override
   void initState() {
     super.initState();
-    _loadScoreDetail();
+    _loadData();
     _audioPlayer.onPlayerComplete.listen((_) {
       if (mounted) setState(() => _isPlaying = false);
     });
@@ -51,19 +52,36 @@ class _ScoreDetailScreenState extends State<ScoreDetailScreen> {
     super.dispose();
   }
 
-  Future<void> _loadScoreDetail() async {
+  Future<void> _loadData() async {
     setState(() => _isLoading = true);
     try {
-      final result = await _todoService.getScoreDetail(widget.itemId);
+      final results = await Future.wait([
+        _todoService.getScoreDetail(widget.itemId),
+        _todoService.getItemDetail(widget.itemId),
+      ]);
+
       if (mounted) {
         setState(() {
-          _scoreResult = result;
+          _scoreResult = results[0] as SpeechScoreResult?;
+          _item = results[1] as TodoItem?;
           _isLoading = false;
         });
       }
     } catch (_) {
       if (mounted) setState(() => _isLoading = false);
     }
+  }
+
+  String? get _audioUrl {
+    return _item?.audioUrl ?? widget.audioUrl;
+  }
+
+  String? get _referenceText {
+    return _item?.referenceText ?? widget.referenceText;
+  }
+
+  TodoItem? get _currentItem {
+    return _item ?? widget.item;
   }
 
   Color _getScoreColor(double? score) {
@@ -74,14 +92,15 @@ class _ScoreDetailScreenState extends State<ScoreDetailScreen> {
   }
 
   Future<void> _playStudentAudio() async {
-    if (widget.audioUrl == null || widget.audioUrl!.isEmpty) return;
+    final url = _audioUrl;
+    if (url == null || url.isEmpty) return;
     if (_isPlaying) {
       await _audioPlayer.stop();
       setState(() => _isPlaying = false);
     } else {
       setState(() => _isPlaying = true);
       try {
-        await _audioPlayer.play(UrlSource(widget.audioUrl!));
+        await _audioPlayer.play(UrlSource(url));
       } catch (_) {
         if (mounted) setState(() => _isPlaying = false);
       }
@@ -89,7 +108,7 @@ class _ScoreDetailScreenState extends State<ScoreDetailScreen> {
   }
 
   Future<void> _playTeacherAudio() async {
-    final teacherAudioUrl = widget.item?.teacherAudioUrl;
+    final teacherAudioUrl = _currentItem?.teacherAudioUrl;
     if (teacherAudioUrl == null || teacherAudioUrl.isEmpty) return;
     if (_isTeacherPlaying) {
       await _teacherAudioPlayer.stop();
@@ -105,7 +124,7 @@ class _ScoreDetailScreenState extends State<ScoreDetailScreen> {
   }
 
   List<InlineSpan> _buildReferenceTextSpans() {
-    final text = widget.referenceText ?? '';
+    final text = _referenceText ?? '';
     final errorWords = _scoreResult?.errorWords ?? [];
     if (errorWords.isEmpty || text.isEmpty) {
       return [TextSpan(text: text)];
@@ -161,12 +180,12 @@ class _ScoreDetailScreenState extends State<ScoreDetailScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('评分详情'),
+        title: Text(_item?.taskTitle ?? '评分详情'),
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : RefreshIndicator(
-              onRefresh: _loadScoreDetail,
+              onRefresh: _loadData,
               child: SingleChildScrollView(
                 padding: const EdgeInsets.all(16),
                 child: Column(
@@ -301,7 +320,8 @@ class _ScoreDetailScreenState extends State<ScoreDetailScreen> {
   }
 
   Widget _buildReferenceTextSection() {
-    if (widget.referenceText == null || widget.referenceText!.isEmpty) {
+    final text = _referenceText;
+    if (text == null || text.isEmpty) {
       return const SizedBox.shrink();
     }
     return Card(
@@ -334,6 +354,7 @@ class _ScoreDetailScreenState extends State<ScoreDetailScreen> {
   }
 
   Widget _buildStudentAudioSection() {
+    final url = _audioUrl;
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -353,7 +374,7 @@ class _ScoreDetailScreenState extends State<ScoreDetailScreen> {
             const SizedBox(height: 16),
             Center(
               child: FloatingActionButton(
-                onPressed: (widget.audioUrl == null || widget.audioUrl!.isEmpty)
+                onPressed: (url == null || url.isEmpty)
                     ? null
                     : _playStudentAudio,
                 backgroundColor: Colors.blue,
@@ -367,7 +388,7 @@ class _ScoreDetailScreenState extends State<ScoreDetailScreen> {
   }
 
   bool _hasTeacherReview() {
-    final item = widget.item;
+    final item = _currentItem;
     if (item == null) return false;
     return item.teacherScore != null ||
         (item.teacherFeedback != null && item.teacherFeedback!.isNotEmpty) ||
@@ -375,7 +396,7 @@ class _ScoreDetailScreenState extends State<ScoreDetailScreen> {
   }
 
   Widget _buildTeacherReviewSection() {
-    final item = widget.item!;
+    final item = _currentItem!;
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
