@@ -5,6 +5,9 @@ import 'services/push_service.dart';
 import 'services/offline_sync_service.dart';
 import 'screens/home_screen.dart';
 import 'screens/login_screen.dart';
+import 'screens/student/student_calendar_screen.dart';
+import 'screens/teacher/student_progress_screen.dart';
+import 'screens/parent/parent_bind_screen.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -61,6 +64,24 @@ class _SpeakScoreAppState extends State<SpeakScoreApp> {
         Locale('en', 'US'),
       ],
       home: const AuthWrapper(),
+      onGenerateRoute: (settings) {
+        switch (settings.name) {
+          case '/parent/bind':
+            return MaterialPageRoute(builder: (_) => const ParentBindScreen());
+          case '/parent/child/calendar':
+            final studentId = settings.arguments as int?;
+            return MaterialPageRoute(
+              builder: (_) => StudentCalendarScreen(studentId: studentId),
+            );
+          case '/parent/child/progress':
+            final studentId = settings.arguments as int?;
+            return MaterialPageRoute(
+              builder: (_) => StudentProgressScreen(studentId: studentId),
+            );
+          default:
+            return null;
+        }
+      },
     );
   }
 }

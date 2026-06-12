@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:speak_score_flutter/screens/parent/parent_bind_screen.dart';
 import 'package:speak_score_flutter/services/auth_service.dart';
 
 class StudentProfileScreen extends StatelessWidget {
@@ -18,6 +19,8 @@ class StudentProfileScreen extends StatelessWidget {
           _buildStatsCards(),
           const SizedBox(height: 16),
           _buildClassInfo(userInfo),
+          const SizedBox(height: 16),
+          _buildParentBindCard(context),
           const SizedBox(height: 32),
           SizedBox(
             width: double.infinity,
@@ -141,6 +144,56 @@ class StudentProfileScreen extends StatelessWidget {
             _InfoRow(label: '年级', value: userInfo?.gradeName ?? '--'),
             _InfoRow(label: '班级', value: userInfo?.className ?? '--'),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildParentBindCard(BuildContext context) {
+    return Card(
+      child: InkWell(
+        onTap: () {
+          Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => const ParentBindScreen()),
+          );
+        },
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: Colors.green.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(22),
+                ),
+                child: const Icon(Icons.family_restroom, color: Colors.green, size: 24),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: const [
+                    Text(
+                      '家长绑定',
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    SizedBox(height: 2),
+                    Text(
+                      '绑定家长账号，实时接收孩子学习动态',
+                      style: TextStyle(fontSize: 12, color: Colors.grey),
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(Icons.chevron_right, color: Colors.grey),
+            ],
+          ),
         ),
       ),
     );

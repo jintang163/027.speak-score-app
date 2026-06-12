@@ -1,7 +1,9 @@
 package com.speak.score.controller;
 
 import com.speak.score.dto.*;
+import com.speak.score.service.ReportScheduler;
 import com.speak.score.service.ReportService;
+import com.speak.score.service.TodoService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpHeaders;
@@ -20,6 +22,8 @@ import java.util.List;
 public class ReportController {
 
     private final ReportService reportService;
+    private final TodoService todoService;
+    private final ReportScheduler reportScheduler;
 
     @GetMapping("/student/calendar")
     public ApiResponse<StudentCalendarDTO> getStudentCalendar(
@@ -103,5 +107,23 @@ public class ReportController {
         reportService.validateClassAccess(currentUserId, classId);
         boolean result = reportService.sendReportByEmail(classId, email, startDate, endDate);
         return ApiResponse.success(result);
+    }
+
+    @GetMapping("/school/{schoolId}/daily-stats")
+    @PreAuthorize("hasRole('EDU_OFFICE')")
+    public ApiResponse<SchoolTaskStatsDTO> getSchoolDailyStats(
+            @PathVariable Long schoolId,
+            @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate date) {
+        SchoolTaskStatsDTO stats = todoService.getSchoolTaskStats(schoolId, date, date);
+        return ApiResponse.success(stats);
+    }
+
+    @PostMapping("/school/{schoolId}/generate-daily-report")
+    @PreAuthorize("hasRole('EDU_OFFICE')")
+    public ApiResponse<Void> generateDailyReport(
+            @PathVariable Long schoolId,
+            @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate date) {
+        reportScheduler.generateDailyReports(date);
+        return ApiResponse.success();
     }
 }

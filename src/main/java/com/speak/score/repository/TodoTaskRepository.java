@@ -36,4 +36,8 @@ public interface TodoTaskRepository extends JpaRepository<TodoTask, Long> {
     Page<TodoTask> findByCreatorIdAndAssigneeClassIdAndDeletedFalse(Long creatorId, Long classId, Pageable pageable);
 
     List<TodoTask> findByStatusAndRemindSentFalseAndDeletedFalse(TodoStatus status);
+
+    List<TodoTask> findByAssigneeSchoolIdAndCreatedAtBetweenAndDeletedFalse(Long schoolId, LocalDateTime startTime, LocalDateTime endTime);
+
+    List<TodoTask> findByAssigneeSchoolIdAndDeadlineBetweenAndDeletedFalse(Long schoolId, LocalDateTime startTime, LocalDateTime endTime);
 }

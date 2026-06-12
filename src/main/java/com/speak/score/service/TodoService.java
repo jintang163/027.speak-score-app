@@ -107,23 +107,9 @@ public class TodoService {
                     request.getDescription(),
                     MsgType.TODO, savedTask.getId(), "TODO_TASK"
             );
-
-            sendAsyncNotifications(savedTask, assigneeIds);
         }
 
         return enrichTaskDTO(savedTask);
-    }
-
-    private void sendAsyncNotifications(TodoTask task, List<Long> assigneeIds) {
-        try {
-            if (rocketMQProducerService != null) {
-                rocketMQProducerService.sendTodoTaskMessage(task.getId(), task.getTitle(), "CREATE");
-                rocketMQProducerService.sendPushMessage(task.getId(), "新打卡任务", task.getTitle(), assigneeIds);
-                rocketMQProducerService.sendWechatMessage(task.getId(), "新打卡任务", task.getTitle(), assigneeIds);
-            }
-        } catch (Exception e) {
-            log.error("Failed to send async notifications for task: {}", task.getId(), e);
-        }
     }
 
     @Transactional
@@ -379,8 +365,6 @@ public class TodoService {
                     newTask.getDescription(),
                     MsgType.TODO, savedTask.getId(), "TODO_TASK"
             );
-
-            sendAsyncNotifications(savedTask, assigneeIds);
         }
 
         return enrichTaskDTO(savedTask);
@@ -438,7 +422,19 @@ public class TodoService {
     }
 
     public SchoolTaskStatsDTO getSchoolTaskStats(Long schoolId) {
-        List<TodoTask> tasks = todoTaskRepository.findByAssigneeSchoolIdAndDeletedFalse(schoolId);
+        return getSchoolTaskStats(schoolId, null, null);
+    }
+
+    public SchoolTaskStatsDTO getSchoolTaskStats(Long schoolId, LocalDate startDate, LocalDate endDate) {
+        List<TodoTask> tasks;
+        if (startDate != null && endDate != null) {
+            LocalDateTime startTime = startDate.atStartOfDay();
+            LocalDateTime endTime = endDate.atTime(23, 59, 59);
+            tasks = todoTaskRepository.findByAssigneeSchoolIdAndCreatedAtBetweenAndDeletedFalse(schoolId, startTime, endTime);
+        } else {
+            tasks = todoTaskRepository.findByAssigneeSchoolIdAndDeletedFalse(schoolId);
+        }
+
         long totalTasks = tasks.size();
         long activeTasks = tasks.stream().filter(t -> t.getStatus() == TodoStatus.PENDING || t.getStatus() == TodoStatus.IN_PROGRESS).count();
         long completedTasks = tasks.stream().filter(t -> t.getStatus() == TodoStatus.COMPLETED).count();
@@ -451,7 +447,14 @@ public class TodoService {
         long completedItems = 0;
 
         if (!taskIds.isEmpty()) {
-            List<TodoItem> allItems = todoItemRepository.findByTaskIdInAndDeletedFalse(taskIds);
+            List<TodoItem> allItems;
+            if (startDate != null && endDate != null) {
+                LocalDateTime startTime = startDate.atStartOfDay();
+                LocalDateTime endTime = endDate.atTime(23, 59, 59);
+                allItems = todoItemRepository.findByTaskIdInAndCreatedAtBetweenAndDeletedFalse(taskIds, startTime, endTime);
+            } else {
+                allItems = todoItemRepository.findByTaskIdInAndDeletedFalse(taskIds);
+            }
             totalItems = allItems.size();
             for (TodoItem item : allItems) {
                 if (item.getStatus() == TodoItemStatus.COMPLETED) {

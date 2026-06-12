@@ -101,4 +101,20 @@ public interface TodoItemRepository extends JpaRepository<TodoItem, Long> {
     @Query("SELECT COUNT(DISTINCT ti.userId) FROM TodoItem ti " +
             "WHERE ti.taskId IN :taskIds AND ti.deleted = false")
     long countDistinctUsersByTaskIdIn(@Param("taskIds") List<Long> taskIds);
+
+    @Query("SELECT ti FROM TodoItem ti WHERE ti.taskId IN :taskIds " +
+            "AND ti.completedAt IS NOT NULL AND ti.completedAt >= :startTime " +
+            "AND ti.completedAt <= :endTime AND ti.deleted = false")
+    List<TodoItem> findByTaskIdInAndCompletedAtBetweenAndDeletedFalse(
+            @Param("taskIds") List<Long> taskIds,
+            @Param("startTime") LocalDateTime startTime,
+            @Param("endTime") LocalDateTime endTime);
+
+    @Query("SELECT ti FROM TodoItem ti WHERE ti.taskId IN :taskIds " +
+            "AND ti.createdAt >= :startTime AND ti.createdAt <= :endTime " +
+            "AND ti.deleted = false")
+    List<TodoItem> findByTaskIdInAndCreatedAtBetweenAndDeletedFalse(
+            @Param("taskIds") List<Long> taskIds,
+            @Param("startTime") LocalDateTime startTime,
+            @Param("endTime") LocalDateTime endTime);
 }

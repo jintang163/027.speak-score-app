@@ -19,6 +19,7 @@ import 'package:speak_score_flutter/screens/edu_office/edu_office_school_screen.
 import 'package:speak_score_flutter/screens/edu_office/edu_office_ranking_screen.dart';
 import 'package:speak_score_flutter/screens/edu_office/edu_office_profile_screen.dart';
 import 'package:speak_score_flutter/screens/edu_office/edu_office_class_comparison_screen.dart';
+import 'package:speak_score_flutter/screens/parent/parent_bind_screen.dart';
 import 'package:speak_score_flutter/screens/material/material_list_screen.dart';
 import 'package:speak_score_flutter/screens/notification/notification_list_screen.dart';
 import 'package:speak_score_flutter/screens/todo/todo_create_screen.dart';
@@ -43,6 +44,7 @@ class _HomeScreenState extends State<HomeScreen> {
     if (roles == null || roles.isEmpty) return 'STUDENT';
     if (roles.contains('EDU_OFFICE')) return 'EDU_OFFICE';
     if (roles.contains('TEACHER')) return 'TEACHER';
+    if (roles.contains('PARENT')) return 'PARENT';
     return 'STUDENT';
   }
 
@@ -52,6 +54,8 @@ class _HomeScreenState extends State<HomeScreen> {
         return '老师';
       case 'EDU_OFFICE':
         return '教办';
+      case 'PARENT':
+        return '家长';
       default:
         return '学生';
     }
@@ -63,6 +67,8 @@ class _HomeScreenState extends State<HomeScreen> {
         return Colors.orange;
       case 'EDU_OFFICE':
         return Colors.purple;
+      case 'PARENT':
+        return Colors.green;
       default:
         return Colors.blue;
     }
@@ -112,6 +118,25 @@ class _HomeScreenState extends State<HomeScreen> {
             label: '我的',
           ),
         ];
+      case 'PARENT':
+        return const [
+          BottomNavigationBarItem(
+            icon: Icon(Icons.family_restroom),
+            label: '孩子',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.video_library),
+            label: '资料',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.notifications),
+            label: '消息',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.person),
+            label: '我的',
+          ),
+        ];
       default:
         return const [
           BottomNavigationBarItem(
@@ -155,6 +180,13 @@ class _HomeScreenState extends State<HomeScreen> {
           EduOfficeRankingScreen(),
           EduOfficeProfileScreen(),
         ];
+      case 'PARENT':
+        return const [
+          ParentBindScreen(),
+          MaterialListScreen(),
+          NotificationListScreen(),
+          StudentProfileScreen(),
+        ];
       default:
         return const [
           StudentTaskScreen(),
@@ -172,6 +204,8 @@ class _HomeScreenState extends State<HomeScreen> {
         return '发布任务';
       case 'EDU_OFFICE':
         return '发送通知';
+      case 'PARENT':
+        return '绑定孩子';
       default:
         return '开始打卡';
     }
@@ -183,6 +217,8 @@ class _HomeScreenState extends State<HomeScreen> {
         return Icons.add_circle;
       case 'EDU_OFFICE':
         return Icons.notifications_active;
+      case 'PARENT':
+        return Icons.person_add;
       default:
         return Icons.fiber_manual_record;
     }
@@ -341,6 +377,10 @@ class _HomeScreenState extends State<HomeScreen> {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(content: Text('发送通知功能开发中')),
                   );
+                } else if (_primaryRole == 'PARENT') {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const ParentBindScreen()),
+                  );
                 } else {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(content: Text('开始打卡功能开发中')),
@@ -461,6 +501,17 @@ class _HomeScreenState extends State<HomeScreen> {
                 Navigator.of(context).pop();
                 Navigator.of(context).push(
                   MaterialPageRoute(builder: (_) => const EduOfficeClassComparisonScreen()),
+                );
+              },
+            ),
+          if (_primaryRole == 'PARENT')
+            ListTile(
+              leading: const Icon(Icons.family_restroom),
+              title: const Text('家长绑定'),
+              onTap: () {
+                Navigator.of(context).pop();
+                Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const ParentBindScreen()),
                 );
               },
             ),

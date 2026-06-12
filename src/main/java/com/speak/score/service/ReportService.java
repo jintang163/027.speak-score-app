@@ -34,6 +34,7 @@ public class ReportService {
     private final ClassMemberRepository classMemberRepository;
     private final GradeRepository gradeRepository;
     private final SchoolRepository schoolRepository;
+    private final ParentStudentRepository parentStudentRepository;
     private final NotificationConfig notificationConfig;
     private final JavaMailSender javaMailSender;
 
@@ -49,6 +50,8 @@ public class ReportService {
                 .anyMatch(r -> r.getRoleCode() == RoleEnum.TEACHER);
         boolean isEduOffice = currentUser.getRoles().stream()
                 .anyMatch(r -> r.getRoleCode() == RoleEnum.EDU_OFFICE);
+        boolean isParent = currentUser.getRoles().stream()
+                .anyMatch(r -> r.getRoleCode() == RoleEnum.PARENT);
 
         if (isEduOffice) {
             return;
@@ -68,6 +71,15 @@ public class ReportService {
                     classIds, targetStudentId, RoleEnum.STUDENT);
 
             if (!isStudentInClass) {
+                throw new BusinessException("无权访问该学生数据");
+            }
+            return;
+        }
+
+        if (isParent) {
+            boolean isMyChild = parentStudentRepository.existsByParentIdAndStudentIdAndDeletedFalse(
+                    currentUserId, targetStudentId);
+            if (!isMyChild) {
                 throw new BusinessException("无权访问该学生数据");
             }
             return;

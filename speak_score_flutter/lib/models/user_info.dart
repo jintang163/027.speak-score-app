@@ -308,6 +308,64 @@ class HomeMenu {
   }
 }
 
+class ParentStudent {
+  final int? id;
+  final int? parentId;
+  final int? studentId;
+  final String? studentName;
+  final String? studentAvatar;
+  final String? schoolName;
+  final String? className;
+  final String? relation;
+  final bool? isPrimary;
+  final DateTime? createdAt;
+
+  const ParentStudent({
+    this.id,
+    this.parentId,
+    this.studentId,
+    this.studentName,
+    this.studentAvatar,
+    this.schoolName,
+    this.className,
+    this.relation,
+    this.isPrimary,
+    this.createdAt,
+  });
+
+  factory ParentStudent.fromJson(Map<String, dynamic> json) {
+    return ParentStudent(
+      id: json['id'] as int?,
+      parentId: json['parentId'] as int?,
+      studentId: json['studentId'] as int?,
+      studentName: json['studentName'] as String?,
+      studentAvatar: json['studentAvatar'] as String?,
+      schoolName: json['schoolName'] as String?,
+      className: json['className'] as String?,
+      relation: json['relation'] as String?,
+      isPrimary: json['isPrimary'] as bool?,
+      createdAt: json['createdAt'] != null
+          ? DateTime.parse(json['createdAt'] as String)
+          : null,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'parentId': parentId,
+      'studentId': studentId,
+      'studentName': studentName,
+      'studentAvatar': studentAvatar,
+      'schoolName': schoolName,
+      'className': className,
+      'relation': relation,
+      'isPrimary': isPrimary,
+      'createdAt': createdAt?.toIso8601String(),
+    };
+  }
+}
+
 class ApiResponse<T> {
   final int? code;
   final String? message;

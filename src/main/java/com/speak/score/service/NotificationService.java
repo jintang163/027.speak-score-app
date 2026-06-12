@@ -53,8 +53,8 @@ public class NotificationService {
         NotifyMessage inAppMsg = createInAppMessage(senderId, receiverId, title, content, msgType, relatedId, relatedType, extraData);
         notifyMessageRepository.save(inAppMsg);
 
-        sendViaPushChannel(receiverId, title, content, msgType, relatedId, relatedType);
-        sendViaWeChat(receiverId, title, content, msgType, relatedId);
+        sendViaPushChannel(senderId, receiverId, title, content, msgType, relatedId, relatedType, extraData);
+        sendViaWeChat(senderId, receiverId, title, content, msgType, relatedId, extraData);
     }
 
     public void sendBatchNotification(Long senderId, List<Long> receiverIds, String title, String content,
@@ -80,8 +80,8 @@ public class NotificationService {
         }
         notifyMessageRepository.saveAll(messages);
 
-        sendBatchViaPushChannel(receiverIds, title, content, msgType, relatedId, relatedType);
-        sendBatchViaWeChat(receiverIds, title, content, msgType, relatedId);
+        sendBatchViaPushChannel(senderId, receiverIds, title, content, msgType, relatedId, relatedType, extraData);
+        sendBatchViaWeChat(senderId, receiverIds, title, content, msgType, relatedId, extraData);
     }
 
     private NotifyMessage createInAppMessage(Long senderId, Long receiverId, String title, String content,
@@ -111,75 +111,212 @@ public class NotificationService {
         return msg;
     }
 
-    private void sendViaPushChannel(Long receiverId, String title, String content,
-                                    MsgType msgType, Long relatedId, String relatedType) {
+    private void sendViaPushChannel(Long senderId, Long receiverId, String title, String content,
+                                    MsgType msgType, Long relatedId, String relatedType, Map<String, Object> extraData) {
+        NotifyChannel channel = NotifyChannel.APP_PUSH;
+        NotifyMessage pushMsg = createChannelMessage(senderId, receiverId, title, content, msgType, relatedId, relatedType, extraData, channel);
         if (pushNotificationService == null) {
+            log.warn("PushNotificationService not available, mark as failed for retry: user={}", receiverId);
+            pushMsg.setSendStatus(SendStatus.FAILED);
+            pushMsg.setLastError("PushNotificationService not available");
+            pushMsg.setNextRetryAt(LocalDateTime.now().plusMinutes(notificationConfig.getRetry().getInitialDelayMinutes()));
+            notifyMessageRepository.save(pushMsg);
             return;
         }
         try {
             pushNotificationService.pushToUsers(Collections.singletonList(receiverId), title, content, relatedId);
-            log.info("Push notification sent to user: {}", receiverId);
+            pushMsg.setSendStatus(SendStatus.SENT);
+            pushMsg.setSentAt(LocalDateTime.now());
+            log.info("Push notification sent to user: {}, channel: {}", receiverId, channel);
         } catch (Exception e) {
-            log.error("Failed to send push notification to user: {}", receiverId, e);
-            recordFailure(receiverId, title, content, msgType, relatedId, relatedType, NotifyChannel.APP_PUSH, e.getMessage());
+            log.error("Failed to send push notification to user: {}, channel: {}", receiverId, channel, e);
+            pushMsg.setSendStatus(SendStatus.FAILED);
+            pushMsg.setLastError(e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName());
+            pushMsg.setNextRetryAt(LocalDateTime.now().plusMinutes(notificationConfig.getRetry().getInitialDelayMinutes()));
         }
+        notifyMessageRepository.save(pushMsg);
     }
 
-    private void sendBatchViaPushChannel(List<Long> receiverIds, String title, String content,
-                                         MsgType msgType, Long relatedId, String relatedType) {
-        if (pushNotificationService == null || receiverIds.isEmpty()) {
+    private void sendBatchViaPushChannel(Long senderId, List<Long> receiverIds, String title, String content,
+                                         MsgType msgType, Long relatedId, String relatedType, Map<String, Object> extraData) {
+        if (receiverIds == null || receiverIds.isEmpty()) {
             return;
         }
+        NotifyChannel channel = NotifyChannel.APP_PUSH;
+        LocalDateTime now = LocalDateTime.now();
+        List<NotifyMessage> messages = new ArrayList<>();
+
+        if (pushNotificationService == null) {
+            log.warn("PushNotificationService not available, mark batch as failed for retry: count={}", receiverIds.size());
+            for (Long receiverId : receiverIds) {
+                NotifyMessage msg = createChannelMessage(senderId, receiverId, title, content, msgType, relatedId, relatedType, extraData, channel);
+                msg.setCreatedAt(now);
+                msg.setUpdatedAt(now);
+                msg.setSendStatus(SendStatus.FAILED);
+                msg.setLastError("PushNotificationService not available");
+                msg.setNextRetryAt(now.plusMinutes(notificationConfig.getRetry().getInitialDelayMinutes()));
+                messages.add(msg);
+            }
+            notifyMessageRepository.saveAll(messages);
+            return;
+        }
+
+        boolean success = false;
+        String errorMsg = null;
         try {
             pushNotificationService.pushToUsers(receiverIds, title, content, relatedId);
-            log.info("Batch push notification sent to {} users", receiverIds.size());
+            success = true;
+            log.info("Batch push notification sent to {} users, channel: {}", receiverIds.size(), channel);
         } catch (Exception e) {
-            log.error("Failed to send batch push notification", e);
-            for (Long receiverId : receiverIds) {
-                recordFailure(receiverId, title, content, msgType, relatedId, relatedType, NotifyChannel.APP_PUSH, e.getMessage());
-            }
+            log.error("Failed to send batch push notification, channel: {}", channel, e);
+            errorMsg = e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName();
         }
+
+        for (Long receiverId : receiverIds) {
+            NotifyMessage msg = createChannelMessage(senderId, receiverId, title, content, msgType, relatedId, relatedType, extraData, channel);
+            msg.setCreatedAt(now);
+            msg.setUpdatedAt(now);
+            if (success) {
+                msg.setSendStatus(SendStatus.SENT);
+                msg.setSentAt(now);
+            } else {
+                msg.setSendStatus(SendStatus.FAILED);
+                msg.setLastError(errorMsg);
+                msg.setNextRetryAt(now.plusMinutes(notificationConfig.getRetry().getInitialDelayMinutes()));
+            }
+            messages.add(msg);
+        }
+        notifyMessageRepository.saveAll(messages);
     }
 
-    private void sendViaWeChat(Long receiverId, String title, String content,
-                               MsgType msgType, Long relatedId) {
+    private void sendViaWeChat(Long senderId, Long receiverId, String title, String content,
+                               MsgType msgType, Long relatedId, Map<String, Object> extraData) {
+        NotifyChannel channel = NotifyChannel.WECHAT;
+        NotifyMessage wechatMsg = createChannelMessage(senderId, receiverId, title, content, msgType, relatedId, null, extraData, channel);
+
         if (weChatSubscribeMessageService == null) {
+            log.warn("WeChatSubscribeMessageService not available, mark as failed for retry: user={}", receiverId);
+            wechatMsg.setSendStatus(SendStatus.FAILED);
+            wechatMsg.setLastError("WeChatSubscribeMessageService not available");
+            wechatMsg.setNextRetryAt(LocalDateTime.now().plusMinutes(notificationConfig.getRetry().getInitialDelayMinutes()));
+            notifyMessageRepository.save(wechatMsg);
+            return;
+        }
+        String templateId = getWeChatTemplateId(msgType);
+        if (templateId == null || templateId.isEmpty()) {
+            log.warn("WeChat templateId not found for msgType={}, mark as failed for retry: user={}", msgType, receiverId);
+            wechatMsg.setSendStatus(SendStatus.FAILED);
+            wechatMsg.setLastError("Template not found for type: " + msgType);
+            wechatMsg.setNextRetryAt(LocalDateTime.now().plusMinutes(notificationConfig.getRetry().getInitialDelayMinutes()));
+            notifyMessageRepository.save(wechatMsg);
             return;
         }
         try {
-            String templateId = getWeChatTemplateId(msgType);
-            if (templateId == null || templateId.isEmpty()) {
-                return;
-            }
             Map<String, String> data = weChatSubscribeMessageService.buildTaskNotificationData(
                     title, content, "请打开App查看详情");
             String page = relatedId != null ? "pages/todo/detail?id=" + relatedId : null;
             weChatSubscribeMessageService.sendSubscribeMessageToUsers(
                     Collections.singletonList(receiverId), templateId, data, page);
+            wechatMsg.setSendStatus(SendStatus.SENT);
+            wechatMsg.setSentAt(LocalDateTime.now());
             log.info("WeChat subscribe message sent to user: {}", receiverId);
         } catch (Exception e) {
             log.error("Failed to send WeChat message to user: {}", receiverId, e);
+            wechatMsg.setSendStatus(SendStatus.FAILED);
+            wechatMsg.setLastError(e.getMessage());
+            wechatMsg.setNextRetryAt(LocalDateTime.now().plusMinutes(notificationConfig.getRetry().getInitialDelayMinutes()));
         }
+        notifyMessageRepository.save(wechatMsg);
     }
 
-    private void sendBatchViaWeChat(List<Long> receiverIds, String title, String content,
-                                    MsgType msgType, Long relatedId) {
-        if (weChatSubscribeMessageService == null || receiverIds.isEmpty()) {
+    private void sendBatchViaWeChat(Long senderId, List<Long> receiverIds, String title, String content,
+                                    MsgType msgType, Long relatedId, Map<String, Object> extraData) {
+        if (receiverIds == null || receiverIds.isEmpty()) {
             return;
         }
-        try {
-            String templateId = getWeChatTemplateId(msgType);
-            if (templateId == null || templateId.isEmpty()) {
-                return;
+        NotifyChannel channel = NotifyChannel.WECHAT;
+        LocalDateTime now = LocalDateTime.now();
+        List<NotifyMessage> messages = new ArrayList<>();
+
+        String templateId = getWeChatTemplateId(msgType);
+        String failReason = null;
+
+        if (weChatSubscribeMessageService == null) {
+            failReason = "WeChatSubscribeMessageService not available";
+        } else if (templateId == null || templateId.isEmpty()) {
+            failReason = "Template not found for type: " + msgType;
+        }
+
+        if (failReason != null) {
+            log.warn("{} , mark batch as failed for retry: count={}", failReason, receiverIds.size());
+            for (Long receiverId : receiverIds) {
+                NotifyMessage msg = createChannelMessage(senderId, receiverId, title, content, msgType, relatedId, null, extraData, channel);
+                msg.setCreatedAt(now);
+                msg.setUpdatedAt(now);
+                msg.setSendStatus(SendStatus.FAILED);
+                msg.setLastError(failReason);
+                msg.setNextRetryAt(now.plusMinutes(notificationConfig.getRetry().getInitialDelayMinutes()));
+                messages.add(msg);
             }
+            notifyMessageRepository.saveAll(messages);
+            return;
+        }
+
+        boolean success = false;
+        String errorMsg = null;
+        try {
             Map<String, String> data = weChatSubscribeMessageService.buildTaskNotificationData(
                     title, content, "请打开App查看详情");
             String page = relatedId != null ? "pages/todo/detail?id=" + relatedId : null;
             weChatSubscribeMessageService.sendSubscribeMessageToUsers(receiverIds, templateId, data, page);
+            success = true;
             log.info("Batch WeChat subscribe message sent to {} users", receiverIds.size());
         } catch (Exception e) {
             log.error("Failed to send batch WeChat message", e);
+            errorMsg = e.getMessage();
         }
+
+        for (Long receiverId : receiverIds) {
+            NotifyMessage msg = createChannelMessage(senderId, receiverId, title, content, msgType, relatedId, null, extraData, channel);
+            msg.setCreatedAt(now);
+            msg.setUpdatedAt(now);
+            if (success) {
+                msg.setSendStatus(SendStatus.SENT);
+                msg.setSentAt(now);
+            } else {
+                msg.setSendStatus(SendStatus.FAILED);
+                msg.setLastError(errorMsg);
+                msg.setNextRetryAt(now.plusMinutes(notificationConfig.getRetry().getInitialDelayMinutes()));
+            }
+            messages.add(msg);
+        }
+        notifyMessageRepository.saveAll(messages);
+    }
+
+    private NotifyMessage createChannelMessage(Long senderId, Long receiverId, String title, String content,
+                                               MsgType msgType, Long relatedId, String relatedType,
+                                               Map<String, Object> extraData, NotifyChannel channel) {
+        NotifyMessage msg = new NotifyMessage();
+        msg.setTitle(title);
+        msg.setContent(content);
+        msg.setMsgType(msgType);
+        msg.setChannel(channel);
+        msg.setSenderId(senderId);
+        msg.setReceiverId(receiverId);
+        msg.setRelatedId(relatedId);
+        msg.setRelatedType(relatedType);
+        msg.setIsRead(false);
+        msg.setSendStatus(SendStatus.PENDING);
+        msg.setRetryCount(0);
+        msg.setMaxRetry(notificationConfig.getRetry().getMaxRetry());
+        if (extraData != null && !extraData.isEmpty()) {
+            try {
+                msg.setExtraData(objectMapper.writeValueAsString(extraData));
+            } catch (Exception e) {
+                log.warn("Failed to serialize extraData", e);
+            }
+        }
+        return msg;
     }
 
     private String getWeChatTemplateId(MsgType msgType) {
@@ -199,30 +336,6 @@ public class NotificationService {
             default:
                 String taskTpl = notificationConfig.getWeChat().getTaskTemplateId();
                 return taskTpl != null ? taskTpl : notificationConfig.getWeChat().getTemplateId();
-        }
-    }
-
-    private void recordFailure(Long receiverId, String title, String content,
-                               MsgType msgType, Long relatedId, String relatedType,
-                               NotifyChannel channel, String error) {
-        try {
-            NotifyMessage failMsg = new NotifyMessage();
-            failMsg.setTitle(title);
-            failMsg.setContent(content);
-            failMsg.setMsgType(msgType);
-            failMsg.setChannel(channel);
-            failMsg.setReceiverId(receiverId);
-            failMsg.setRelatedId(relatedId);
-            failMsg.setRelatedType(relatedType);
-            failMsg.setIsRead(false);
-            failMsg.setSendStatus(SendStatus.FAILED);
-            failMsg.setRetryCount(0);
-            failMsg.setMaxRetry(notificationConfig.getRetry().getMaxRetry());
-            failMsg.setLastError(error);
-            failMsg.setNextRetryAt(LocalDateTime.now().plusMinutes(notificationConfig.getRetry().getInitialDelayMinutes()));
-            notifyMessageRepository.save(failMsg);
-        } catch (Exception e) {
-            log.error("Failed to record notification failure", e);
         }
     }
 

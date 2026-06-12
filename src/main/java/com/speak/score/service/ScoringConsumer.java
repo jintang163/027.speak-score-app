@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.speak.score.config.SpeechEvaluationConfig;
 import com.speak.score.dto.SpeechScoreResult;
+import com.speak.score.entity.MsgType;
 import com.speak.score.entity.SpeechScoreDetail;
 import com.speak.score.entity.TodoItem;
 import com.speak.score.entity.TodoItemStatus;
@@ -49,7 +50,7 @@ public class ScoringConsumer implements RocketMQListener<Map<String, Object>> {
     private StringRedisTemplate stringRedisTemplate;
 
     @Autowired(required = false)
-    private PushNotificationService pushNotificationService;
+    private NotificationService notificationService;
 
     @Autowired(required = false)
     private SpeechEvaluationConfig speechEvaluationConfig;
@@ -90,7 +91,7 @@ public class ScoringConsumer implements RocketMQListener<Map<String, Object>> {
 
             if (result.isSuccess()) {
                 handleScoringSuccess(item, result);
-                sendPushNotification(userId, itemId, result.getOverallScore());
+                sendScoreNotification(userId, itemId, taskId, result.getOverallScore());
             } else {
                 log.warn("Scoring failed for itemId={}: {}", itemId, result.getErrorMessage());
                 handleScoringFailure(item, itemId, taskId, userId, audioUrl, referenceText, messageRetryCount);
@@ -184,14 +185,24 @@ public class ScoringConsumer implements RocketMQListener<Map<String, Object>> {
         }
     }
 
-    private void sendPushNotification(Long userId, Long itemId, Double score) {
-        if (pushNotificationService != null && userId != null) {
+    private void sendScoreNotification(Long userId, Long itemId, Long taskId, Double score) {
+        if (notificationService != null && userId != null) {
             try {
                 String content = "作业已批改，得分：" + (score != null ? Math.round(score) : "N/A");
-                List<Long> userIds = Collections.singletonList(userId);
-                pushNotificationService.pushToUsers(userIds, "打卡评分完成", content, itemId);
+                Map<String, Object> extraData = new HashMap<>();
+                extraData.put("score", score);
+                extraData.put("itemId", itemId);
+                notificationService.sendNotification(
+                        null, userId,
+                        "打卡评分完成",
+                        content,
+                        MsgType.SCORE,
+                        taskId,
+                        "TODO_TASK",
+                        extraData
+                );
             } catch (Exception e) {
-                log.warn("Failed to send push notification for itemId={}", itemId, e);
+                log.warn("Failed to send score notification for itemId={}", itemId, e);
             }
         }
     }

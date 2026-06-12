@@ -10,8 +10,9 @@ import 'package:speak_score_flutter/widgets/chart_widgets.dart';
 class StudentProgressScreen extends StatefulWidget {
   final int? classId;
   final String? className;
+  final int? studentId;
 
-  const StudentProgressScreen({super.key, this.classId, this.className});
+  const StudentProgressScreen({super.key, this.classId, this.className, this.studentId});
 
   @override
   State<StudentProgressScreen> createState() => _StudentProgressScreenState();
@@ -29,10 +30,32 @@ class _StudentProgressScreenState extends State<StudentProgressScreen> {
   DateTime _startDate = DateTime.now().subtract(const Duration(days: 30));
   DateTime _endDate = DateTime.now();
 
+  bool get _isParentView => widget.studentId != null;
+
   @override
   void initState() {
     super.initState();
-    _loadStudents();
+    if (_isParentView) {
+      _loadParentStudent();
+    } else {
+      _loadStudents();
+    }
+  }
+
+  Future<void> _loadParentStudent() async {
+    setState(() => _isLoading = true);
+    try {
+      _selectedStudent = UserInfo(
+        id: widget.studentId,
+        realName: '孩子',
+      );
+      if (mounted) {
+        setState(() => _isLoading = false);
+        _loadProgress();
+      }
+    } catch (_) {
+      if (mounted) setState(() => _isLoading = false);
+    }
   }
 
   Future<void> _loadStudents() async {
@@ -64,12 +87,13 @@ class _StudentProgressScreenState extends State<StudentProgressScreen> {
   }
 
   Future<void> _loadProgress() async {
-    if (_selectedStudent == null) return;
+    if (_selectedStudent == null && !_isParentView) return;
 
     setState(() => _isLoadingProgress = true);
     try {
+      final targetStudentId = _isParentView ? widget.studentId : _selectedStudent!.id;
       final data = await _reportService.getStudentProgress(
-        studentId: _selectedStudent!.id!,
+        studentId: targetStudentId,
         startDate: _startDate,
         endDate: _endDate,
       );
@@ -116,7 +140,7 @@ class _StudentProgressScreenState extends State<StudentProgressScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('$className 学生进步曲线'),
+        title: Text(_isParentView ? '学习进步曲线' : '$className 学生进步曲线'),
         actions: [
           IconButton(
             onPressed: _selectDateRange,
@@ -127,7 +151,7 @@ class _StudentProgressScreenState extends State<StudentProgressScreen> {
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
-          : _students.isEmpty
+          : _students.isEmpty && !_isParentView
               ? Center(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -143,7 +167,7 @@ class _StudentProgressScreenState extends State<StudentProgressScreen> {
                 )
               : Column(
                   children: [
-                    _buildStudentSelector(),
+                    if (!_isParentView) _buildStudentSelector(),
                     _buildDateRangeBar(),
                     Expanded(
                       child: _isLoadingProgress

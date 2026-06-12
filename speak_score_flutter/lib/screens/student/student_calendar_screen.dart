@@ -7,7 +7,9 @@ import 'package:speak_score_flutter/services/auth_service.dart';
 import 'package:speak_score_flutter/screens/todo/score_detail_screen.dart';
 
 class StudentCalendarScreen extends StatefulWidget {
-  const StudentCalendarScreen({super.key});
+  final int? studentId;
+
+  const StudentCalendarScreen({super.key, this.studentId});
 
   @override
   State<StudentCalendarScreen> createState() => _StudentCalendarScreenState();
@@ -38,6 +40,7 @@ class _StudentCalendarScreenState extends State<StudentCalendarScreen> {
       final endDate = DateTime(now.year, now.month + 1, 0);
 
       final data = await _reportService.getStudentCalendar(
+        studentId: widget.studentId,
         startDate: startDate,
         endDate: endDate,
       );
@@ -76,6 +79,7 @@ class _StudentCalendarScreenState extends State<StudentCalendarScreen> {
       final endDate = DateTime(focusedDay.year, focusedDay.month + 1, 0);
 
       final data = await _reportService.getStudentCalendar(
+        studentId: widget.studentId,
         startDate: startDate,
         endDate: endDate,
       );

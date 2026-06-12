@@ -42,28 +42,23 @@ public class WeChatSubscribeMessageService {
     }
 
     public void sendSubscribeMessage(String openid, String templateId,
-                                     Map<String, String> data, String page) {
-        try {
-            WxMpSubscribeMessage message = WxMpSubscribeMessage.builder()
-                    .toUser(openid)
-                    .templateId(templateId)
-                    .page(page)
-                    .build();
+                                     Map<String, String> data, String page) throws WxErrorException {
+        WxMpSubscribeMessage message = WxMpSubscribeMessage.builder()
+                .toUser(openid)
+                .templateId(templateId)
+                .page(page)
+                .build();
 
-            for (Map.Entry<String, String> entry : data.entrySet()) {
-                message.addData(new WxMpSubscribeMessage.Data(entry.getKey(), entry.getValue(), "#000000"));
-            }
-
-            wxMpService.getMsgService().sendSubscribeMsg(message);
-            log.info("WeChat subscribe message sent to openid={}", openid);
-        } catch (WxErrorException e) {
-            log.error("Failed to send WeChat subscribe message to openid={}, errcode={}, errmsg={}",
-                    openid, e.getError().getErrorCode(), e.getError().getErrorMsg());
+        for (Map.Entry<String, String> entry : data.entrySet()) {
+            message.addData(new WxMpSubscribeMessage.Data(entry.getKey(), entry.getValue(), "#000000"));
         }
+
+        wxMpService.getMsgService().sendSubscribeMsg(message);
+        log.info("WeChat subscribe message sent to openid={}", openid);
     }
 
     public void sendBatchSubscribeMessage(List<String> openids, String templateId,
-                                          Map<String, String> data, String page) {
+                                          Map<String, String> data, String page) throws WxErrorException {
         for (String openid : openids) {
             sendSubscribeMessage(openid, templateId, data, page);
         }
@@ -85,7 +80,11 @@ public class WeChatSubscribeMessageService {
                 .map(User::getWechatOpenid)
                 .collect(Collectors.toList());
         log.info("Sending WeChat subscribe message to {} users with openid", openids.size());
-        sendBatchSubscribeMessage(openids, templateId, data, page);
+        try {
+            sendBatchSubscribeMessage(openids, templateId, data, page);
+        } catch (WxErrorException e) {
+            throw new RuntimeException("Failed to send WeChat subscribe message: " + e.getError().getErrorMsg(), e);
+        }
     }
 
     public Map<String, String> buildTaskNotificationData(String title, String content, String remark) {

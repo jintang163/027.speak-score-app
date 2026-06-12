@@ -90,18 +90,25 @@ public class ReportScheduler {
     @Scheduled(cron = "${notification.weCom.dailyReportCron:0 0 18 * * ?}")
     @Transactional
     public void generateDailyReports() {
-        log.info("Starting daily report generation...");
+        LocalDate yesterday = LocalDate.now().minusDays(1);
+        generateDailyReports(yesterday);
+    }
+
+    @Transactional
+    public void generateDailyReports(LocalDate date) {
+        log.info("Starting daily report generation for date: {}...", date);
         long start = System.currentTimeMillis();
 
-        LocalDate yesterday = LocalDate.now().minusDays(1);
-        String dateStr = yesterday.format(DATE_FORMATTER);
+        String dateStr = date.format(DATE_FORMATTER);
+        LocalDate startDate = date;
+        LocalDate endDate = date;
 
         List<School> schools = schoolRepository.findAllActive();
 
         int successCount = 0;
         for (School school : schools) {
             try {
-                SchoolTaskStatsDTO stats = todoService.getSchoolTaskStats(school.getId());
+                SchoolTaskStatsDTO stats = todoService.getSchoolTaskStats(school.getId(), startDate, endDate);
                 stats.setSchoolName(school.getSchoolName());
 
                 String markdown = buildDailyMarkdown(stats, dateStr);

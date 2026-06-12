@@ -33,15 +33,13 @@ public class PushNotificationService {
 
     public void pushToUsers(List<Long> userIds, String title, String content, Long taskId) {
         if (!pushConfig.isEnabled()) {
-            log.warn("Push notification is disabled");
-            return;
+            throw new RuntimeException("Push notification is disabled");
         }
         try {
             List<UserDevice> devices = userDeviceRepository
                     .findByUserIdInAndDeviceTypeAndDeletedFalse(userIds, "GETUI");
             if (devices.isEmpty()) {
-                log.warn("No Getui clientIds found for userIds: {}", userIds);
-                return;
+                throw new RuntimeException("No Getui clientIds found for userIds: " + userIds);
             }
 
             List<String> clientIds = devices.stream()
@@ -51,13 +49,14 @@ public class PushNotificationService {
 
             String token = ensureAuthToken();
             if (token == null) {
-                log.error("Failed to get Getui auth token, aborting push");
-                return;
+                throw new RuntimeException("Failed to get Getui auth token");
             }
 
             doPushSingle(token, clientIds, title, content, taskId);
+        } catch (RuntimeException e) {
+            throw e;
         } catch (Exception e) {
-            log.error("Failed to push notification to users", e);
+            throw new RuntimeException("Failed to push notification to users", e);
         }
     }
 
@@ -153,11 +152,15 @@ public class PushNotificationService {
             if ("0".equals(root.path("code").asText())) {
                 log.info("Getui push success: taskId={}, clientCount={}", taskId, clientIds.size());
             } else {
-                log.error("Getui push failed: code={}, msg={}",
-                        root.path("code").asText(), root.path("msg").asText());
+                String code = root.path("code").asText();
+                String msg = root.path("msg").asText();
+                log.error("Getui push failed: code={}, msg={}", code, msg);
+                throw new RuntimeException("Getui push failed: code=" + code + ", msg=" + msg);
             }
+        } catch (RuntimeException e) {
+            throw e;
         } catch (Exception e) {
-            log.error("Failed to push via Getui single cid", e);
+            throw new RuntimeException("Failed to push via Getui single cid", e);
         }
     }
 
