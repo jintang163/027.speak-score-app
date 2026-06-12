@@ -4,6 +4,7 @@ import com.speak.score.dto.ApiResponse;
 import com.speak.score.dto.NotifyChannelConfigDTO;
 import com.speak.score.dto.NotifyChannelConfigRequest;
 import com.speak.score.dto.NotifyMessageDTO;
+import com.speak.score.entity.MsgType;
 import com.speak.score.entity.NotifyChannel;
 import com.speak.score.entity.NotifyChannelConfig;
 import com.speak.score.repository.NotifyChannelConfigRepository;
@@ -15,6 +16,7 @@ import org.springframework.web.bind.annotation.*;
 
 import javax.validation.Valid;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @RestController
@@ -29,8 +31,13 @@ public class NotificationController {
     public ApiResponse<Page<NotifyMessageDTO>> getMessages(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
+            @RequestParam(required = false) String msgType,
             Authentication auth) {
         Long userId = (Long) auth.getPrincipal();
+        if (msgType != null && !msgType.isEmpty()) {
+            return ApiResponse.success(notificationService.getMessagesByType(
+                    userId, MsgType.valueOf(msgType), page, size));
+        }
         return ApiResponse.success(notificationService.getMessages(userId, page, size));
     }
 
@@ -38,6 +45,12 @@ public class NotificationController {
     public ApiResponse<Long> getUnreadCount(Authentication auth) {
         Long userId = (Long) auth.getPrincipal();
         return ApiResponse.success(notificationService.getUnreadCount(userId));
+    }
+
+    @GetMapping("/unread-count-by-type")
+    public ApiResponse<Map<String, Long>> getUnreadCountByType(Authentication auth) {
+        Long userId = (Long) auth.getPrincipal();
+        return ApiResponse.success(notificationService.getUnreadCountByType(userId));
     }
 
     @PutMapping("/{id}/read")

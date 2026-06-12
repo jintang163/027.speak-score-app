@@ -4,5 +4,7 @@ public enum NotifyChannel {
     IN_APP,
     EMAIL,
     DINGTALK,
-    WECHAT
+    WECHAT,
+    APP_PUSH,
+    WECOM
 }

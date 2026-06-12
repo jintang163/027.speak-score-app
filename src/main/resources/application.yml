@@ -101,9 +101,22 @@ notification:
   wechat:
     enabled: ${NOTIFY_WECHAT_ENABLED:false}
     template-id: ${NOTIFY_WECHAT_TEMPLATE_ID:}
+    task-template-id: ${NOTIFY_WECHAT_TASK_TEMPLATE_ID:}
+    score-template-id: ${NOTIFY_WECHAT_SCORE_TEMPLATE_ID:}
+    report-template-id: ${NOTIFY_WECHAT_REPORT_TEMPLATE_ID:}
+  wecom:
+    enabled: ${NOTIFY_WECOM_ENABLED:false}
+    daily-report-cron: ${NOTIFY_WECOM_DAILY_CRON:0 0 18 * * ?}
+    weekly-report-cron: ${NOTIFY_WECOM_WEEKLY_CRON:0 0 18 ? * MON}
   reminder:
     cron: ${NOTIFY_REMINDER_CRON:0 */5 * * * *}
-    advance-minutes: ${NOTIFY_ADVANCE_MINUTES:30}
+    advance-minutes: ${NOTIFY_ADVANCE_MINUTES:120}
+  retry:
+    enabled: ${NOTIFY_RETRY_ENABLED:true}
+    cron: ${NOTIFY_RETRY_CRON:0 */10 * * * *}
+    max-retry: ${NOTIFY_RETRY_MAX:3}
+    initial-delay-minutes: ${NOTIFY_RETRY_DELAY:1}
+    backoff-multiplier: ${NOTIFY_RETRY_BACKOFF:2}
 
 rocketmq:
   name-server: ${ROCKETMQ_NAME_SERVER:}

@@ -1,13 +1,11 @@
 package com.speak.score.service;
 
-import com.speak.score.entity.Permission;
-import com.speak.score.entity.Role;
-import com.speak.score.entity.RoleEnum;
-import com.speak.score.entity.RolePermission;
+import com.speak.score.entity.*;
 import com.speak.score.exception.BusinessException;
 import com.speak.score.repository.PermissionRepository;
 import com.speak.score.repository.RolePermissionRepository;
 import com.speak.score.repository.RoleRepository;
+import com.speak.score.repository.UserRepository;
 import com.speak.score.security.RbacPermissionService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -25,6 +23,7 @@ public class RbacService {
     private final PermissionRepository permissionRepository;
     private final RolePermissionRepository rolePermissionRepository;
     private final RbacPermissionService rbacPermissionService;
+    private final UserRepository userRepository;
 
     @Transactional
     public void initRolesAndPermissions() {
@@ -41,8 +40,34 @@ public class RbacService {
         initStudentPermissions();
         initTeacherPermissions();
         initEduOfficePermissions();
+        initParentPermissions();
 
         rbacPermissionService.evictAllPermissionCache();
+    }
+
+    @Transactional
+    public void ensureRole(Long userId, RoleEnum roleEnum) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new BusinessException("用户不存在"));
+
+        boolean hasRole = user.getRoles().stream()
+                .anyMatch(r -> r.getRoleCode() == roleEnum);
+        if (hasRole) {
+            return;
+        }
+
+        Role role = roleRepository.findByRoleCode(roleEnum)
+                .orElseGet(() -> {
+                    Role r = new Role();
+                    r.setRoleCode(roleEnum);
+                    r.setRoleName(getRoleDisplayName(roleEnum));
+                    r.setDescription(getRoleDescription(roleEnum));
+                    return roleRepository.save(r);
+                });
+
+        user.addRole(role);
+        userRepository.save(user);
+        log.info("Role {} assigned to user {}", roleEnum, userId);
     }
 
     private void initStudentPermissions() {
@@ -94,9 +119,22 @@ public class RbacService {
                 "video:upload", "video:manage", "video:approve",
                 "message:send", "message:manage",
                 "permission:manage",
-                "todo:create", "todo:manage_all", "notification:send", "notification:manage_all"
+                "todo:create", "todo:manage_all", "notification:send", "notification:manage_all",
+                "wecom:config", "wecom:send", "report:school_daily"
         };
         assignPermissionsToRole(eduOfficeRole, permissions);
+    }
+
+    private void initParentPermissions() {
+        Role parentRole = roleRepository.findByRoleCode(RoleEnum.PARENT)
+                .orElseThrow(() -> new BusinessException("Parent role not found"));
+        String[] permissions = {
+                "profile:view", "profile:update",
+                "notification:view", "notification:manage_own",
+                "child:view", "child:bind", "child:unbind",
+                "report:view_child", "child:calendar", "child:progress"
+        };
+        assignPermissionsToRole(parentRole, permissions);
     }
 
     private void assignPermissionsToRole(Role role, String[] permissionCodes) {
@@ -127,6 +165,7 @@ public class RbacService {
             case STUDENT: return "学生";
             case TEACHER: return "老师";
             case EDU_OFFICE: return "教办";
+            case PARENT: return "家长";
             default: return roleEnum.name();
         }
     }
@@ -136,6 +175,7 @@ public class RbacService {
             case STUDENT: return "学生角色，可跟读打卡、查看成绩和排行";
             case TEACHER: return "老师角色，可下发任务、管理本班学生、查看班级成绩";
             case EDU_OFFICE: return "教办角色，可管理全校年级班级、教师、查看全校数据";
+            case PARENT: return "家长角色，可查看孩子打卡报告和学习数据";
             default: return "";
         }
     }

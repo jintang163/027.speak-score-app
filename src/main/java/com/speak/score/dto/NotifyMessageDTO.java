@@ -25,6 +25,10 @@ public class NotifyMessageDTO {
     private Boolean isRead;
     private String readAt;
     private String createdAt;
+    private String sendStatus;
+    private Integer retryCount;
+    private String sentAt;
+    private String extraData;
 
     private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
@@ -46,6 +50,10 @@ public class NotifyMessageDTO {
         dto.setIsRead(m.getIsRead());
         dto.setReadAt(m.getReadAt() != null ? m.getReadAt().format(FORMATTER) : null);
         dto.setCreatedAt(m.getCreatedAt() != null ? m.getCreatedAt().format(FORMATTER) : null);
+        dto.setSendStatus(m.getSendStatus() != null ? m.getSendStatus().name() : null);
+        dto.setRetryCount(m.getRetryCount());
+        dto.setSentAt(m.getSentAt() != null ? m.getSentAt().format(FORMATTER) : null);
+        dto.setExtraData(m.getExtraData());
         return dto;
     }
 }

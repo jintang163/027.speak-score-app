@@ -4,5 +4,9 @@ public enum MsgType {
     TODO,
     SYSTEM,
     REMINDER,
-    URGE
+    URGE,
+    SCORE,
+    PARENT_REPORT,
+    WEEKLY_REPORT,
+    DAILY_REPORT
 }

@@ -32,4 +32,6 @@ public interface UserRepository extends JpaRepository<User, Long> {
     boolean existsByPhone(String phone);
 
     boolean existsByWechatOpenid(String openid);
+
+    Optional<User> findByPhoneAndDeletedFalse(String phone);
 }

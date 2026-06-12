@@ -43,6 +43,7 @@ public class TodoService {
     private final OssService ossService;
     private final SpeechScoreDetailRepository speechScoreDetailRepository;
     private final UserRepository userRepository;
+    private final ParentStudentRepository parentStudentRepository;
 
     @Autowired(required = false)
     private RocketMQProducerService rocketMQProducerService;
@@ -186,6 +187,8 @@ public class TodoService {
                 MsgType.TODO, taskId, "TODO_TASK"
         );
 
+        notifyParentsOfCheckin(userId, task.getTitle(), "已提交打卡，等待评分", taskId, null);
+
         return TodoItemDTO.fromEntity(savedItem);
     }
 
@@ -222,6 +225,8 @@ public class TodoService {
                 item.getFeedback(),
                 MsgType.TODO, taskId, "TODO_TASK"
         );
+
+        notifyParentsOfCheckin(userId, task.getTitle(), "已完成打卡", taskId, item.getScore());
 
         return TodoItemDTO.fromEntity(savedItem);
     }
@@ -525,8 +530,12 @@ public class TodoService {
                     teacherId, savedItem.getUserId(),
                     "教师已评阅您的打卡：" + task.getTitle(),
                     feedback,
-                    MsgType.TODO, savedItem.getTaskId(), "TODO_TASK"
+                    MsgType.SCORE, savedItem.getTaskId(), "TODO_TASK"
             );
+
+            notifyParentsOfCheckin(savedItem.getUserId(), task.getTitle(),
+                    "教师已评阅，得分：" + (score != null ? String.format("%.1f", score) : "暂无"),
+                    savedItem.getTaskId(), score);
         }
 
         return TodoItemDTO.fromEntity(savedItem);
@@ -595,5 +604,47 @@ public class TodoService {
         }
 
         return dto;
+    }
+
+    private void notifyParentsOfCheckin(Long studentId, String taskTitle, String statusText, Long taskId, Double score) {
+        try {
+            List<Long> parentIds = parentStudentRepository.findByStudentIdAndDeletedFalse(studentId)
+                    .stream()
+                    .map(ps -> ps.getParentId())
+                    .collect(Collectors.toList());
+
+            if (parentIds.isEmpty()) {
+                return;
+            }
+
+            User student = userRepository.findById(studentId).orElse(null);
+            String studentName = student != null
+                    ? (student.getRealName() != null ? student.getRealName() : student.getNickname())
+                    : "孩子";
+
+            String title = "孩子打卡动态：" + studentName;
+            StringBuilder content = new StringBuilder();
+            content.append(studentName).append(" ").append(statusText);
+            content.append("\n任务：").append(taskTitle);
+            if (score != null) {
+                content.append("\n得分：").append(String.format("%.1f", score));
+            }
+
+            Map<String, Object> extraData = new HashMap<>();
+            extraData.put("studentId", studentId);
+            extraData.put("studentName", studentName);
+            extraData.put("taskId", taskId);
+            extraData.put("score", score);
+            extraData.put("status", statusText);
+
+            notificationService.sendBatchNotification(
+                    studentId, parentIds,
+                    title, content.toString(),
+                    MsgType.PARENT_REPORT, taskId, "TODO_TASK",
+                    extraData
+            );
+        } catch (Exception e) {
+            log.error("Failed to notify parents for student: {}", studentId, e);
+        }
     }
 }

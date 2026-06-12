@@ -430,6 +430,10 @@ class NotifyMessage {
   final bool? isRead;
   final String? readAt;
   final String? createdAt;
+  final String? sendStatus;
+  final int? retryCount;
+  final String? sentAt;
+  final String? extraData;
 
   const NotifyMessage({
     this.id,
@@ -445,6 +449,10 @@ class NotifyMessage {
     this.isRead,
     this.readAt,
     this.createdAt,
+    this.sendStatus,
+    this.retryCount,
+    this.sentAt,
+    this.extraData,
   });
 
   factory NotifyMessage.fromJson(Map<String, dynamic> json) {
@@ -462,6 +470,10 @@ class NotifyMessage {
       isRead: json['isRead'] as bool?,
       readAt: json['readAt'] as String?,
       createdAt: json['createdAt'] as String?,
+      sendStatus: json['sendStatus'] as String?,
+      retryCount: json['retryCount'] as int?,
+      sentAt: json['sentAt'] as String?,
+      extraData: json['extraData'] as String?,
     );
   }
 
@@ -479,6 +491,10 @@ class NotifyMessage {
         'isRead': isRead,
         'readAt': readAt,
         'createdAt': createdAt,
+        'sendStatus': sendStatus,
+        'retryCount': retryCount,
+        'sentAt': sentAt,
+        'extraData': extraData,
       };
 
   IconData get msgTypeIcon {
@@ -491,8 +507,62 @@ class NotifyMessage {
         return Icons.notifications_active;
       case 'SYSTEM':
         return Icons.info;
+      case 'SCORE':
+        return Icons.grade;
+      case 'PARENT_REPORT':
+        return Icons.family_restroom;
+      case 'WEEKLY_REPORT':
+        return Icons.calendar_view_week;
+      case 'DAILY_REPORT':
+        return Icons.today;
       default:
         return Icons.notifications;
+    }
+  }
+
+  String get msgTypeLabel {
+    switch (msgType) {
+      case 'TODO':
+        return '任务';
+      case 'REMINDER':
+        return '提醒';
+      case 'URGE':
+        return '催办';
+      case 'SYSTEM':
+        return '系统';
+      case 'SCORE':
+        return '评分';
+      case 'PARENT_REPORT':
+        return '孩子动态';
+      case 'WEEKLY_REPORT':
+        return '周报';
+      case 'DAILY_REPORT':
+        return '日报';
+      default:
+        return '通知';
+    }
+  }
+
+  Color get msgTypeColor {
+    switch (msgType) {
+      case 'TODO':
+        return Colors.blue;
+      case 'REMINDER':
+        return Colors.orange;
+      case 'URGE':
+        return Colors.red;
+      case 'SYSTEM':
+        return Colors.grey;
+      case 'SCORE':
+        return Colors.green;
+      case 'PARENT_REPORT':
+        return Colors.purple;
+      case 'WEEKLY_REPORT':
+        return Colors.teal;
+      case 'DAILY_REPORT':
+        return Colors.indigo;
+      default:
+        return Colors.blue;
     }
   }
 }

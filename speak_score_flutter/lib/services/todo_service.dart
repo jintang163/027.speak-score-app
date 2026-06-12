@@ -136,11 +136,17 @@ class TodoService {
   }
 
   Future<List<NotifyMessage>> getNotifications({
+    String? msgType,
     int page = 0,
     int size = 20,
   }) async {
+    final queryParams = <String, dynamic>{
+      'page': page,
+      'size': size,
+      if (msgType != null) 'msgType': msgType,
+    };
     final response = await _apiClient.get('/notifications',
-        queryParameters: {'page': page, 'size': size});
+        queryParameters: queryParams);
     final data = response.data['data'];
     if (data is Map && data.containsKey('content')) {
       return (data['content'] as List)
@@ -148,6 +154,19 @@ class TodoService {
           .toList();
     }
     return [];
+  }
+
+  Future<Map<String, int>> getUnreadCountByType() async {
+    try {
+      final response = await _apiClient.get('/notifications/unread-count-by-type');
+      final data = response.data['data'];
+      if (data is Map) {
+        return data.map((key, value) => MapEntry(key as String, (value as num).toInt()));
+      }
+      return {};
+    } catch (_) {
+      return {};
+    }
   }
 
   Future<int> getUnreadCount() async {

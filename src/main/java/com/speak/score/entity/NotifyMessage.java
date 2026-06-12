@@ -49,4 +49,26 @@ public class NotifyMessage extends BaseEntity {
 
     @Column(name = "read_at")
     private LocalDateTime readAt;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "send_status", nullable = false, length = 20)
+    private SendStatus sendStatus = SendStatus.PENDING;
+
+    @Column(name = "retry_count", nullable = false)
+    private Integer retryCount = 0;
+
+    @Column(name = "max_retry", nullable = false)
+    private Integer maxRetry = 3;
+
+    @Column(name = "next_retry_at")
+    private LocalDateTime nextRetryAt;
+
+    @Column(name = "last_error", columnDefinition = "TEXT")
+    private String lastError;
+
+    @Column(name = "sent_at")
+    private LocalDateTime sentAt;
+
+    @Column(name = "extra_data", columnDefinition = "TEXT")
+    private String extraData;
 }

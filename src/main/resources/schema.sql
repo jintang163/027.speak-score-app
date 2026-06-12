@@ -378,4 +378,49 @@ CREATE TABLE IF NOT EXISTS user_device (
 INSERT INTO sys_role (role_code, role_name, description) VALUES
     ('STUDENT', '学生', '学生角色，可跟读打卡、查看成绩和排行'),
     ('TEACHER', '老师', '老师角色，可下发任务、管理本班学生、查看班级成绩'),
-    ('EDU_OFFICE', '教办', '教办角色，可管理全校年级班级、教师、查看全校数据');
+    ('EDU_OFFICE', '教办', '教办角色，可管理全校年级班级、教师、查看全校数据'),
+    ('PARENT', '家长', '家长角色，可查看孩子打卡报告和学习数据');
+
+CREATE TABLE IF NOT EXISTS parent_student (
+    id              BIGINT AUTO_INCREMENT PRIMARY KEY,
+    parent_id       BIGINT       NOT NULL COMMENT '家长用户ID',
+    student_id      BIGINT       NOT NULL COMMENT '学生用户ID',
+    relation        VARCHAR(20)  COMMENT '关系：父亲、母亲、爷爷、奶奶等',
+    is_primary      BIT(1)       NOT NULL DEFAULT 0 COMMENT '是否主要联系人',
+    status          INT          NOT NULL DEFAULT 1 COMMENT '0-禁用,1-启用',
+    created_at      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    deleted         BIT(1)       NOT NULL DEFAULT 0,
+    UNIQUE KEY uk_parent_student (parent_id, student_id),
+    INDEX idx_student (student_id),
+    INDEX idx_parent (parent_id),
+    CONSTRAINT fk_ps_parent FOREIGN KEY (parent_id) REFERENCES sys_user(id),
+    CONSTRAINT fk_ps_student FOREIGN KEY (student_id) REFERENCES sys_user(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS wecom_config (
+    id              BIGINT AUTO_INCREMENT PRIMARY KEY,
+    school_id       BIGINT       NOT NULL COMMENT '学校ID',
+    webhook_url     VARCHAR(500) NOT NULL COMMENT '企业微信机器人Webhook地址',
+    secret          VARCHAR(200) COMMENT '签名密钥（可选）',
+    config_name     VARCHAR(100) NOT NULL COMMENT '配置名称，如：一年级组、英语教研组等',
+    report_type     VARCHAR(50)  NOT NULL DEFAULT 'DAILY' COMMENT 'DAILY-日报,WEEKLY-周报,CUSTOM-自定义',
+    enabled         BIT(1)       NOT NULL DEFAULT 1,
+    created_by      BIGINT,
+    created_at      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    deleted         BIT(1)       NOT NULL DEFAULT 0,
+    INDEX idx_school (school_id),
+    CONSTRAINT fk_wc_school FOREIGN KEY (school_id) REFERENCES org_school(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+ALTER TABLE notify_message
+    ADD COLUMN IF NOT EXISTS send_status VARCHAR(20) NOT NULL DEFAULT 'PENDING' COMMENT 'PENDING-待发送,SENT-已发送,FAILED-发送失败,RETRYING-重试中',
+    ADD COLUMN IF NOT EXISTS retry_count INT NOT NULL DEFAULT 0 COMMENT '重试次数',
+    ADD COLUMN IF NOT EXISTS max_retry INT NOT NULL DEFAULT 3 COMMENT '最大重试次数',
+    ADD COLUMN IF NOT EXISTS next_retry_at DATETIME COMMENT '下次重试时间',
+    ADD COLUMN IF NOT EXISTS last_error TEXT COMMENT '最后一次错误信息',
+    ADD COLUMN IF NOT EXISTS sent_at DATETIME COMMENT '实际发送时间',
+    ADD COLUMN IF NOT EXISTS extra_data TEXT COMMENT '扩展数据JSON（用于图文卡片等）',
+    ADD INDEX IF NOT EXISTS idx_send_status (send_status),
+    ADD INDEX IF NOT EXISTS idx_next_retry (next_retry_at);
